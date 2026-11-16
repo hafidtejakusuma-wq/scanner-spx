@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>SPXID06 Scanner - Futuristic</title>
+  <title>SPXID06 Turbo Scanner - Max Audio</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    /* Tema Futuristic Modern - Base Orange */
     :root {
       --bg-dark: #09090b;
       --bg-card: #131316;
@@ -22,18 +21,16 @@
     body { margin: 0; padding: 16px; background: var(--bg-dark); color: var(--text-main); }
     .container { max-width: 480px; margin: 0 auto; }
     
-    /* Header */
-    .header { text-align: center; margin-bottom: 20px; position: relative; }
+    .header { text-align: center; margin-bottom: 16px; position: relative; }
     .header h2 { 
       margin: 0; font-size: 22px; font-weight: 800; color: var(--orange-neon); 
       text-transform: uppercase; letter-spacing: 2px;
       text-shadow: 0 0 12px var(--orange-glow);
     }
-    .header p { margin: 6px 0 0; font-size: 12px; color: var(--text-sub); letter-spacing: 0.8px; }
+    .header p { margin: 4px 0 0; font-size: 11px; color: var(--text-sub); letter-spacing: 1px; }
 
-    /* Kartu (Card) */
     .card { 
-      background: var(--bg-card); border-radius: 16px; padding: 18px; margin-bottom: 16px; 
+      background: var(--bg-card); border-radius: 16px; padding: 16px; margin-bottom: 14px; 
       border: 1px solid var(--border-color);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       position: relative; overflow: hidden;
@@ -44,11 +41,10 @@
       opacity: 0.6;
     }
 
-    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
     
-    /* Input & Select */
     select, input[type="text"] {
-      width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);
+      width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--border-color);
       background: #000; color: var(--text-main); font-size: 15px; outline: none; transition: 0.3s;
     }
     select:focus, input[type="text"]:focus { 
@@ -56,90 +52,75 @@
       box-shadow: 0 0 0 3px var(--orange-dim); 
     }
 
-    /* Checkbox */
-    .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-    .checkbox-row input { width: 20px; height: 20px; accent-color: var(--orange-neon); cursor: pointer; }
+    .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .checkbox-row input { width: 18px; height: 18px; accent-color: var(--orange-neon); cursor: pointer; }
     .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
 
-    /* Area Kamera */
     #reader-wrapper { 
       position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
-      background: #000; min-height: 250px; border: 1px solid #333;
+      background: #000; min-height: 240px; border: 1px solid #333;
     }
     #reader { width: 100%; }
 
-    /* Tombol Kontrol */
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
     button {
-      padding: 14px 12px; border: none; border-radius: 12px; font-size: 14px; font-weight: 700;
+      padding: 13px 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; 
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px;
+      transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
     }
     button:active { transform: scale(0.96); }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .btn-cam-start { 
-      background: linear-gradient(135deg, #ff8a00, #ff4500); color: #fff; 
-      box-shadow: 0 4px 15px var(--orange-glow); 
-    }
-    .btn-cam-stop { 
-      background: transparent; color: var(--orange-neon); 
-      border: 1px solid var(--orange-neon); 
-    }
+    .btn-cam-start { background: linear-gradient(135deg, #ff8a00, #ff4500); color: #fff; box-shadow: 0 4px 15px var(--orange-glow); }
+    .btn-cam-stop { background: transparent; color: var(--orange-neon); border: 1px solid var(--orange-neon); }
     .btn-torch-off { background: #1a1a1a; color: var(--text-sub); border: 1px solid var(--border-color); }
-    .btn-torch-on { 
-      background: #fff; color: #000; 
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); 
-    }
-    .btn-manual { 
-      background: var(--orange-dim); color: var(--orange-neon); width: 100%; margin-top: 10px; 
-      border: 1px solid var(--orange-glow);
-    }
-    .btn-manual:hover { background: var(--orange-glow); color: #fff; }
+    .btn-torch-on { background: #fff; color: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
+    .btn-manual { background: var(--orange-dim); color: var(--orange-neon); width: 100%; margin-top: 10px; border: 1px solid var(--orange-glow); }
 
-    /* Notifikasi Status */
+    /* Bar Status Antrean Sinkronisasi */
+    .sync-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #000; border: 1px solid var(--border-color); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 14px; font-size: 12px;
+    }
+    .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #10b981; }
+    .sync-dot.busy { background: #ff6b00; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
     #statusBox {
-      display: none; padding: 14px; border-radius: 12px; margin-bottom: 16px;
-      font-size: 14px; font-weight: 600; text-align: center; letter-spacing: 0.5px;
-      animation: fadeIn 0.3s ease;
+      display: none; padding: 12px; border-radius: 12px; margin-bottom: 14px;
+      font-size: 13px; font-weight: 600; text-align: center;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    
-    .status-loading { display: block !important; background: rgba(0, 112, 243, 0.1); border: 1px solid #0070f3; color: #52a8ff; }
-    .status-success { display: block !important; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; }
-    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #fbbf24; }
-    .status-error { display: block !important; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; }
+    .status-success { display: block !important; background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; color: #34d399; }
+    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; color: #fbbf24; }
+    .status-error { display: block !important; background: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; color: #f87171; }
 
-    /* Riwayat Scan */
-    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .badge { 
-      background: var(--orange-neon); color: #000; padding: 4px 10px; 
-      border-radius: 99px; font-size: 12px; font-weight: 800;
-      box-shadow: 0 0 8px var(--orange-glow);
-    }
-    .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
-    .history-list::-webkit-scrollbar { width: 4px; }
-    .history-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .badge { background: var(--orange-neon); color: #000; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; }
+    .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     
     .history-item {
-      background: #000; padding: 12px 14px; border-radius: 10px; 
-      border-left: 3px solid var(--orange-neon);
+      background: #000; padding: 10px 14px; border-radius: 10px; 
+      border-left: 3px solid #f59e0b;
       display: flex; justify-content: space-between; align-items: center; font-size: 13px;
-      transition: 0.3s;
     }
-    .history-item:hover { background: #0a0a0c; border-left-width: 6px; }
-    .history-resi { font-weight: 700; color: #fff; font-family: 'Courier New', Courier, monospace; font-size: 15px; letter-spacing: 1px; }
-    .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+    .history-item.synced { border-left-color: #10b981; }
+    .history-item.dup { border-left-color: #ef4444; opacity: 0.7; }
+    .history-resi { font-weight: 700; color: #fff; font-family: monospace; font-size: 14px; }
+    .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
+    .tag-status { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+    .tag-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .tag-ok { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .tag-dup { background: rgba(239, 68, 68, 0.15); color: #f87171; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h2>Scanner UI</h2>
-      <p>FILTER: SPXID06 ONLY // DATA LINK TO SPREADSHEETS</p>
+      <h2>Turbo Scanner UI</h2>
+      <p>HIGH-CONCURRENCY BATCH MODE // SPXID06 ONLY</p>
     </div>
 
-    <!-- Pilihan Kurir -->
     <div class="card">
       <label for="kurirSelect">Target Database (Kurir)</label>
       <select id="kurirSelect">
@@ -151,10 +132,14 @@
       </div>
     </div>
 
-    <!-- Status Notifikasi -->
+    <!-- Indikator Antrean Real-Time -->
+    <div class="sync-bar">
+      <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
+      <div style="color:var(--orange-neon); font-weight:700;" id="queueCount">Antrean: 0</div>
+    </div>
+
     <div id="statusBox"></div>
 
-    <!-- Kamera & Tombol Senter -->
     <div class="card">
       <div id="reader-wrapper">
         <div id="reader"></div>
@@ -165,23 +150,19 @@
       </div>
     </div>
 
-    <!-- Input Manual Cadangan -->
     <div class="card">
       <label for="manualInput">Manual Override (Wajib SPXID06)</label>
       <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789...">
       <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
     </div>
 
-    <!-- Riwayat Scan Sesi Ini -->
     <div class="card">
       <div class="history-header">
-        <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-sub);">Log Transmisi</span>
+        <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
         <span class="badge" id="scanCounter">0 SCAN</span>
       </div>
       <div class="history-list" id="historyList">
-        <div style="text-align:center; color:var(--border-color); font-size:12px; padding:20px; font-weight:600; letter-spacing:1px;">
-          NO DATA RECORDED
-        </div>
+        <div style="text-align:center; color:var(--border-color); font-size:12px; padding:18px;">NO DATA RECORDED</div>
       </div>
     </div>
   </div>
@@ -193,17 +174,36 @@
     let html5QrCode = null;
     let isScanning = false;
     let isTorchOn = false;
-    let isProcessing = false;
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
     let totalScan = 0;
+    let audioCtx = null;
 
-    // 1. Ambil daftar sheet kurir dari Apps Script
+    // Memori lokal untuk deteksi duplikat instan (0 ms) & antrean batch
+    const localCache = new Set();
+    let uploadQueue = [];
+    let isSyncing = false;
+
+    // Inisialisasi AudioContext permanen agar tidak ada jeda saat suara dibunyikan
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
     window.onload = async function() {
       html5QrCode = new Html5Qrcode("reader");
       const select = document.getElementById('kurirSelect');
 
       if (WEB_APP_URL.includes('PASTE_URL')) {
         select.innerHTML = '<option value="">ERROR: SYSTEM URL NOT FOUND</option>';
-        tampilkanStatus('error', 'SYSTEM HALTED: Isi WEB_APP_URL terlebih dahulu.');
+        tampilkanStatus('error', 'Isi WEB_APP_URL terlebih dahulu.');
         return;
       }
 
@@ -226,10 +226,13 @@
         select.innerHTML = '<option value="">CONNECTION FAILED</option>';
         tampilkanStatus('error', 'Gagal terhubung ke Database: ' + err);
       }
+
+      // Jalankan mesin sinkronisasi otomatis setiap 2.5 detik di latar belakang
+      setInterval(prosesAntreanBatch, 2500);
     };
 
-    // 2. Nyalakan / Matikan Kamera (Full Box Ratio)
     async function toggleKamera() {
+      initAudio(); // Aktifkan mesin audio saat pengguna mengetuk tombol kamera
       const btnCam = document.getElementById('btnKamera');
       const btnTorch = document.getElementById('btnSenter');
 
@@ -238,7 +241,7 @@
           await html5QrCode.start(
             { facingMode: "environment" },
             {
-              fps: 15,
+              fps: 20,
               aspectRatio: 1.333334,
               qrbox: function(viewfinderWidth, viewfinderHeight) {
                 return {
@@ -259,24 +262,15 @@
           tampilkanStatus('error', 'CAMERA ACCESS DENIED: ' + err);
         }
       } else {
-        await hentikanKamera();
-      }
-    }
-
-    async function hentikanKamera() {
-      if (html5QrCode && isScanning) {
         if (isTorchOn) await setTorchState(false);
         await html5QrCode.stop();
         isScanning = false;
-        const btnCam = document.getElementById('btnKamera');
-        const btnTorch = document.getElementById('btnSenter');
         btnCam.textContent = '📷 ACTIVATE CAM';
         btnCam.className = 'btn-cam-start';
         btnTorch.disabled = true;
       }
     }
 
-    // 3. Kontrol Senter (Flashlight)
     async function toggleSenter() {
       if (!isScanning) return;
       await setTorchState(!isTorchOn);
@@ -285,9 +279,7 @@
     async function setTorchState(state) {
       const btnTorch = document.getElementById('btnSenter');
       try {
-        await html5QrCode.applyVideoConstraints({
-          advanced: [{ torch: state }]
-        });
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: state }] });
         isTorchOn = state;
         btnTorch.textContent = isTorchOn ? '🔦 LIGHT: ON' : '🔦 ILLUMINATE';
         btnTorch.className = isTorchOn ? 'btn-torch-on' : 'btn-torch-off';
@@ -297,68 +289,129 @@
     }
 
     function onScanSuccess(decodedText) {
-      if (isProcessing) return;
-      prosesKirimResi(decodedText);
+      const now = Date.now();
+      if (decodedText === lastScannedCode && (now - lastScannedTime) < 1200) return;
+      lastScannedCode = decodedText;
+      lastScannedTime = now;
+
+      masukkanKeAntrean(decodedText);
     }
 
     function kirimManual() {
+      initAudio();
       const input = document.getElementById('manualInput');
       if (!input.value.trim()) {
-        tampilkanStatus('error', 'INPUT REQUIRED: Masukkan nomor resi.');
+        tampilkanStatus('error', 'Masukkan nomor resi terlebih dahulu.');
         return;
       }
-      prosesKirimResi(input.value.trim());
+      masukkanKeAntrean(input.value.trim());
       input.value = '';
     }
 
-    // 4. Kirim Data via POST (Hanya menerima awalan SPXID06)
-    async function prosesKirimResi(nomorResi) {
+    // 1. Proses Instan (0 ms) di HP tanpa menunggu balasan server
+    function masukkanKeAntrean(nomorResi) {
       const kurir = document.getElementById('kurirSelect').value;
       const cekDuplikat = document.getElementById('cekDuplikat').checked;
       const resiBersih = String(nomorResi).trim().toUpperCase();
 
-      // FILTER: Tolak jika tidak diawali SPXID06
       if (!resiBersih.startsWith('SPXID06')) {
-        isProcessing = true;
-        bunyiBeep(300, 250);
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
         tampilkanStatus('error', '⛔ DITOLAK: "' + resiBersih + '" bukan resi SPXID06');
-        setTimeout(() => { isProcessing = false; }, 1200);
         return;
       }
 
       if (!kurir) {
-        tampilkanStatus('error', 'TARGET REQUIRED: Pilih kurir tujuan!');
+        suaraErrorKeras();
+        tampilkanStatus('error', 'Pilih kurir tujuan terlebih dahulu!');
         return;
       }
 
-      isProcessing = true;
-      bunyiBeep(880, 120);
-      if (navigator.vibrate) navigator.vibrate(120);
+      const cacheKey = kurir + '::' + resiBersih;
+      if (cekDuplikat && localCache.has(cacheKey)) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        tampilkanStatus('duplicate', '⚠️ DUPLIKAT LOKAL: ' + resiBersih + ' sudah di-scan!');
+        return;
+      }
 
-      tampilkanStatus('loading', '⏳ TRANSMITTING: ' + resiBersih + '...');
+      localCache.add(cacheKey);
+      suaraSuksesKeras();
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      const waktuLokal = new Date().toLocaleTimeString('id-ID', { hour12: false });
+      const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+      uploadQueue.push({
+        id: itemId,
+        kurir: kurir,
+        resi: resiBersih,
+        cekDuplikat: cekDuplikat
+      });
+
+      updateQueueUI();
+      tampilkanStatus('success', '⚡ MASUK ANTREAN: ' + resiBersih);
+      tambahKeRiwayat(itemId, resiBersih, kurir, waktuLokal);
+    }
+
+    // 2. Kirim Berkelompok (Batch) di Latar Belakang
+    async function prosesAntreanBatch() {
+      if (isSyncing || uploadQueue.length === 0) return;
+
+      isSyncing = true;
+      updateSyncStatus(true, 'Menyimpan ' + uploadQueue.length + ' data...');
+
+      const batchToSend = uploadQueue.slice(0, 25);
 
       try {
         const response = await fetch(WEB_APP_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ kurir: kurir, resi: resiBersih, cekDuplikat: cekDuplikat })
+          body: JSON.stringify({ items: batchToSend })
         });
         const res = await response.json();
 
-        if (res.status === 'success') {
-          tampilkanStatus('success', '✅ STORED: ' + res.data.resi);
-          tambahKeRiwayat(res.data);
-        } else if (res.status === 'duplicate') {
-          bunyiBeep(300, 300);
-          tampilkanStatus('duplicate', '⚠️ ALERT: ' + res.message);
+        if (res.status === 'success' && Array.isArray(res.results)) {
+          uploadQueue.splice(0, batchToSend.length);
+
+          res.results.forEach((hasil, idx) => {
+            const origItem = batchToSend[idx];
+            if (!origItem) return;
+            const badgeEl = document.getElementById('status-' + origItem.id);
+            const cardEl = document.getElementById(origItem.id);
+
+            if (hasil.status === 'success') {
+              if (badgeEl) { badgeEl.className = 'tag-status tag-ok'; badgeEl.textContent = 'TERSIMPAN #' + hasil.no; }
+              if (cardEl) cardEl.classList.add('synced');
+            } else if (hasil.status === 'duplicate') {
+              suaraErrorKeras();
+              if (badgeEl) { badgeEl.className = 'tag-status tag-dup'; badgeEl.textContent = 'DUPLIKAT SHEET'; }
+              if (cardEl) cardEl.classList.add('dup');
+              tampilkanStatus('duplicate', '⚠️ ' + hasil.message);
+            } else {
+              if (badgeEl) { badgeEl.className = 'tag-status tag-dup'; badgeEl.textContent = 'GAGAL'; }
+            }
+          });
+          updateSyncStatus(false, 'Semua Data Tersinkron');
         } else {
-          tampilkanStatus('error', '❌ ERROR: ' + res.message);
+          updateSyncStatus(true, 'Antrean padat, mencoba ulang...');
         }
       } catch (err) {
-        tampilkanStatus('error', '❌ TRANSMISSION FAILED: ' + err);
+        updateSyncStatus(true, 'Koneksi lambat, mengulang...');
       } finally {
-        setTimeout(() => { isProcessing = false; }, 1800);
+        isSyncing = false;
+        updateQueueUI();
       }
+    }
+
+    function updateQueueUI() {
+      document.getElementById('queueCount').textContent = 'Antrean: ' + uploadQueue.length;
+    }
+
+    function updateSyncStatus(isBusy, text) {
+      const dot = document.getElementById('syncDot');
+      dot.className = isBusy ? 'sync-dot busy' : 'sync-dot';
+      document.getElementById('syncText').textContent = text;
     }
 
     function tampilkanStatus(tipe, pesan) {
@@ -367,7 +420,7 @@
       box.textContent = pesan;
     }
 
-    function tambahKeRiwayat(data) {
+    function tambahKeRiwayat(itemId, resi, kurir, waktu) {
       totalScan++;
       document.getElementById('scanCounter').textContent = totalScan + ' SCAN';
       const list = document.getElementById('historyList');
@@ -375,30 +428,91 @@
 
       const item = document.createElement('div');
       item.className = 'history-item';
+      item.id = itemId;
       item.innerHTML = `
         <div>
-          <div class="history-resi">${data.resi}</div>
-          <div class="history-meta">TARGET: <b style="color:var(--orange-neon);">${data.kurir}</b> • ${data.waktu}</div>
+          <div class="history-resi">${resi}</div>
+          <div class="history-meta">KURIR: <b style="color:var(--orange-neon);">${kurir}</b> • ${waktu}</div>
         </div>
-        <div style="color:var(--text-sub); font-size:12px; font-weight:800;">ID#${data.no}</div>
+        <span class="tag-status tag-pending" id="status-${itemId}">MENGIRIM...</span>
       `;
       list.prepend(item);
     }
 
-    function bunyiBeep(freq, duration) {
+    // =========================================================================
+    // SISTEM AUDIO SUPER NYARING (MAX GAIN + DUAL OSCILLATOR + COMPRESSOR)
+    // =========================================================================
+    function suaraSuksesKeras() {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.value = freq;
-        gain.gain.value = 0.1;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        setTimeout(() => { osc.stop(); ctx.close(); }, duration);
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        // Compressor untuk memaksimalkan kekerasan suara di speaker kecil HP
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-10, now);
+        compressor.knee.setValueAtTime(0, now);
+        compressor.ratio.setValueAtTime(20, now);
+        compressor.attack.setValueAtTime(0, now);
+        compressor.release.setValueAtTime(0.1, now);
+        compressor.connect(audioCtx.destination);
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now); // Volume 100% Maksimal
+        masterGain.connect(compressor);
+
+        // Osilator 1: Frekuensi utama tajam (1500Hz -> 2400Hz)
+        const osc1 = audioCtx.createOscillator();
+        osc1.type = 'sawtooth'; // Gelombang paling nyaring menembus kebisingan
+        osc1.frequency.setValueAtTime(1500, now);
+        osc1.frequency.setValueAtTime(2400, now + 0.08);
+        osc1.connect(masterGain);
+
+        // Osilator 2: Harmonik tinggi agar terdengar melengking jelas
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(3000, now);
+        osc2.frequency.setValueAtTime(3600, now + 0.08);
+        osc2.connect(masterGain);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.18);
+        osc2.stop(now + 0.18);
       } catch (e) {}
     }
+
+    function suaraErrorKeras() {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now); // Volume 100% Maksimal
+        masterGain.connect(audioCtx.destination);
+
+        // Bunyi peringatan 2x rendah-keras ("TET-TET!")
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.setValueAtTime(220, now + 0.18);
+
+        // Jeda sejenak di tengah agar terdengar putus-putus
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.gain.setValueAtTime(0.0, now + 0.14);
+        masterGain.gain.setValueAtTime(1.0, now + 0.18);
+
+        osc.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } catch (e) {}
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+      if (uploadQueue.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
   </script>
 </body>
 </html>
