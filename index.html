@@ -1,1001 +1,404 @@
-/*******************************************************
- * BOT WHATSAPP - TASK DRIVER, CEK RESI & ABSEN FOTO (v20.0)
- * SANGKAPURA HUB (BROADCAST REKAP SANKSI KE 2 GRUP WA)
- *******************************************************/
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SPXID06 Scanner - Futuristic</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    /* Tema Futuristic Modern - Base Orange */
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: #131316;
+      --orange-neon: #ff6b00;
+      --orange-glow: rgba(255, 107, 0, 0.4);
+      --orange-dim: rgba(255, 107, 0, 0.1);
+      --text-main: #f4f4f5;
+      --text-sub: #a1a1aa;
+      --border-color: #27272a;
+    }
 
-const CONFIG = {
-  SPREADSHEET_ID: '1MUzXIiuO6QCCZA1K25-C5szWv5PXPKI5rmCFpiwcJ1k',
-  SHEET_TASK_NAME: '',
-  SHEET_DRIVER_NAME: 'Data Driver',
-  SHEET_RESI_NAME: 'Data Resi',
-  SHEET_LOG_FOTO: 'Log Foto',
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; padding: 16px; background: var(--bg-dark); color: var(--text-main); }
+    .container { max-width: 480px; margin: 0 auto; }
+    
+    /* Header */
+    .header { text-align: center; margin-bottom: 20px; position: relative; }
+    .header h2 { 
+      margin: 0; font-size: 22px; font-weight: 800; color: var(--orange-neon); 
+      text-transform: uppercase; letter-spacing: 2px;
+      text-shadow: 0 0 12px var(--orange-glow);
+    }
+    .header p { margin: 6px 0 0; font-size: 12px; color: var(--text-sub); letter-spacing: 0.8px; }
 
-  API_SECRET: 'SANGKAPURA_TASK_2026',
-  FONNTE_TOKEN: 'iK3eho2vK7eXNhB4eSQA',
+    /* Kartu (Card) */
+    .card { 
+      background: var(--bg-card); border-radius: 16px; padding: 18px; margin-bottom: 16px; 
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--orange-neon), transparent);
+      opacity: 0.6;
+    }
 
-  // TARGET BROADCAST SANKSI AKTIF (2 GRUP WHATSAPP)
-  BROADCAST_GROUPS: [
-    '120363285513625282@g.us', // Grup Sangkapura Hub
-    '120363411194382432@g.us'  // Grup IAM
-  ],
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    
+    /* Input & Select */
+    select, input[type="text"] {
+      width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);
+      background: #000; color: var(--text-main); font-size: 15px; outline: none; transition: 0.3s;
+    }
+    select:focus, input[type="text"]:focus { 
+      border-color: var(--orange-neon); 
+      box-shadow: 0 0 0 3px var(--orange-dim); 
+    }
 
-  ALLOWED_GROUPS: [
-    'beban keluarga spx sangkapura hub', 
-    'iam', 
-    '120363285513625282@g.us',
-    '120363411194382432@g.us'
-  ],
+    /* Checkbox */
+    .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .checkbox-row input { width: 20px; height: 20px; accent-color: var(--orange-neon); cursor: pointer; }
+    .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
 
-  DRIVER_HEADERS: ['Driver Name', 'Nama Driver', 'Driver', 'Nama Kurir', 'Kurir', 'DRIVER NAME', 'NAMA DRIVER'],
-  TASK_HEADERS: ['Task ID', 'TaskID', 'Task', 'TASK ID', 'TASKID'],
-  STATUS_HEADERS: ['Status', 'STATUS', 'Task Status', 'State'],
+    /* Area Kamera */
+    #reader-wrapper { 
+      position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
+      background: #000; min-height: 250px; border: 1px solid #333;
+    }
+    #reader { width: 100%; }
 
-  RESI_HEADERS: ['Order ID', 'SLS Tracking Number', 'SPX tracking num', 'SPX Tracking Num', 'No Resi', 'Resi', 'Tracking Number', 'SPXID'],
-  DISTRICT_HEADERS: ['District Name', 'District', 'Kecamatan'],
-  PRICE_HEADERS: ['COD Amount', 'Nominal', 'Harga', 'Amount', 'COD', 'Nilai'],
+    /* Tombol Kontrol */
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    button {
+      padding: 14px 12px; border: none; border-radius: 12px; font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  MAP_DRIVER_HEADERS: ['Nama Driver', 'Driver Name', 'Driver', 'Nama'],
-  MAP_PHONE_HEADERS: ['Nomor WA', 'No WA', 'Phone Number', 'Phone', 'No HP', 'Nomor HP'],
+    .btn-cam-start { 
+      background: linear-gradient(135deg, #ff8a00, #ff4500); color: #fff; 
+      box-shadow: 0 4px 15px var(--orange-glow); 
+    }
+    .btn-cam-stop { 
+      background: transparent; color: var(--orange-neon); 
+      border: 1px solid var(--orange-neon); 
+    }
+    .btn-torch-off { background: #1a1a1a; color: var(--text-sub); border: 1px solid var(--border-color); }
+    .btn-torch-on { 
+      background: #fff; color: #000; 
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); 
+    }
+    .btn-manual { 
+      background: var(--orange-dim); color: var(--orange-neon); width: 100%; margin-top: 10px; 
+      border: 1px solid var(--orange-glow);
+    }
+    .btn-manual:hover { background: var(--orange-glow); color: #fff; }
 
-  ALLOWED_STATUSES: ['processed', 'processing', 'partiallyassigned', 'partially_assigned'],
-  
-  PENALTY_HEADERS: {
-    NAMA: ['Nama Pelanggar', 'Nama'],
-    PELANGGARAN: ['Pelanggaran', 'Jenis Pelanggaran'],
-    START_DATE: ['Start Date', 'Mulai'],
-    END_DATE: ['End Date', 'Selesai'],
-    STATUS: ['Status Sanksi', 'Status']
-  }
-};
+    /* Notifikasi Status */
+    #statusBox {
+      display: none; padding: 14px; border-radius: 12px; margin-bottom: 16px;
+      font-size: 14px; font-weight: 600; text-align: center; letter-spacing: 0.5px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .status-loading { display: block !important; background: rgba(0, 112, 243, 0.1); border: 1px solid #0070f3; color: #52a8ff; }
+    .status-success { display: block !important; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; }
+    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #fbbf24; }
+    .status-error { display: block !important; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #f87171; }
 
-function doGet(e) {
-  return jsonResponse({
-    success: true,
-    message: 'API & BOT WHATSAPP SANGKAPURA ONLINE',
-    time: new Date().toISOString()
-  });
-}
+    /* Riwayat Scan */
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .badge { 
+      background: var(--orange-neon); color: #000; padding: 4px 10px; 
+      border-radius: 99px; font-size: 12px; font-weight: 800;
+      box-shadow: 0 0 8px var(--orange-glow);
+    }
+    .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+    
+    .history-item {
+      background: #000; padding: 12px 14px; border-radius: 10px; 
+      border-left: 3px solid var(--orange-neon);
+      display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+      transition: 0.3s;
+    }
+    .history-item:hover { background: #0a0a0c; border-left-width: 6px; }
+    .history-resi { font-weight: 700; color: #fff; font-family: 'Courier New', Courier, monospace; font-size: 15px; letter-spacing: 1px; }
+    .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Scanner UI</h2>
+      <p>FILTER: SPXID06 ONLY // DATA LINK TO SPREADSHEETS</p>
+    </div>
 
-function doPost(e) {
-  try {
-    let body = {};
-    let rawContents = '';
+    <!-- Pilihan Kurir -->
+    <div class="card">
+      <label for="kurirSelect">Target Database (Kurir)</label>
+      <select id="kurirSelect">
+        <option value="">Memuat target sistem...</option>
+      </select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="cekDuplikat" checked>
+        <label for="cekDuplikat">Blokir duplikasi resi otomatis</label>
+      </div>
+    </div>
 
-    if (e && e.postData && e.postData.contents) {
-      rawContents = e.postData.contents;
+    <!-- Status Notifikasi -->
+    <div id="statusBox"></div>
+
+    <!-- Kamera & Tombol Senter -->
+    <div class="card">
+      <div id="reader-wrapper">
+        <div id="reader"></div>
+      </div>
+      <div class="btn-group">
+        <button id="btnKamera" class="btn-cam-start" onclick="toggleKamera()">📷 ACTIVATE CAM</button>
+        <button id="btnSenter" class="btn-torch-off" onclick="toggleSenter()" disabled>🔦 ILLUMINATE</button>
+      </div>
+    </div>
+
+    <!-- Input Manual Cadangan -->
+    <div class="card">
+      <label for="manualInput">Manual Override (Wajib SPXID06)</label>
+      <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789...">
+      <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
+    </div>
+
+    <!-- Riwayat Scan Sesi Ini -->
+    <div class="card">
+      <div class="history-header">
+        <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-sub);">Log Transmisi</span>
+        <span class="badge" id="scanCounter">0 SCAN</span>
+      </div>
+      <div class="history-list" id="historyList">
+        <div style="text-align:center; color:var(--border-color); font-size:12px; padding:20px; font-weight:600; letter-spacing:1px;">
+          NO DATA RECORDED
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // TEMPEL URL WEB APP APPS SCRIPT ANDA DI BAWAH INI:
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
+
+    let html5QrCode = null;
+    let isScanning = false;
+    let isTorchOn = false;
+    let isProcessing = false;
+    let totalScan = 0;
+
+    // 1. Ambil daftar sheet kurir dari Apps Script
+    window.onload = async function() {
+      html5QrCode = new Html5Qrcode("reader");
+      const select = document.getElementById('kurirSelect');
+
+      if (WEB_APP_URL.includes('PASTE_URL')) {
+        select.innerHTML = '<option value="">ERROR: SYSTEM URL NOT FOUND</option>';
+        tampilkanStatus('error', 'SYSTEM HALTED: Isi WEB_APP_URL terlebih dahulu.');
+        return;
+      }
+
       try {
-        body = JSON.parse(rawContents);
-      } catch (err) {
-        body = e.parameter || {};
-      }
-    } else if (e && e.parameter) {
-      body = e.parameter;
-    }
-
-    let message = body.message || body.pesan || body.text || body.caption || '';
-    let target = body.sender || body.pengirim || '';
-    let senderNumber = body.member || body.username || body.phone || body.sender || '';
-    let groupName = body.group || body.subject || body.group_name || body.name || '';
-    let groupId = body.pengirim || body.sender || '';
-    let urlFile = body.url || body.file || body.media || body.filename || '';
-
-    message = String(message || '').trim();
-    const lowerMsg = message.toLowerCase();
-
-    // DETEKSI FOTO / NON-TEXT MESSAGE
-    let isPhoto = false;
-
-    if (
-      lowerMsg === 'non-text message' || 
-      urlFile !== '' || 
-      body.type === 'image' || 
-      body.type === 'media' ||
-      rawContents.includes('non-text message')
-    ) {
-      isPhoto = true;
-    }
-
-    if (isPhoto) {
-      let replyTarget = (groupName !== '' || groupId !== '') ? (groupId || target) : target;
-      logPhotoEntry(senderNumber, groupName, groupId, replyTarget);
-    }
-
-    // 1. PERINTAH: P / PING
-    if (lowerMsg === 'p' || lowerMsg === 'ping') {
-      const now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'EEEE, dd MMMM yyyy - HH:mm');
-      let replyText = '🤖 *Bot WhatsApp Sangkapura AKTIF & Online!*\n\n';
-      replyText += '📅 _' + now + ' WIB_\n';
-      replyText += '💡 Gunakan perintah *@at* untuk mengecek task driver atau ketik Nomor Resi SPX.';
-
-      if (target) sendFonnteMessage(target, replyText);
-      return jsonResponse({ status: 'success', action: 'ping' });
-    }
-
-    // 2. PERINTAH: @SHARE.ALL
-    if (lowerMsg === '@share.all') {
-      const allTasksResult = getAllDriversActiveTasks();
-
-      if (!allTasksResult.success) {
-        sendFonnteMessage(target, '⚠️ Gagal mengambil data: ' + allTasksResult.message);
-      } else if (Object.keys(allTasksResult.data).length === 0) {
-        sendFonnteMessage(target, '✅ Tidak ada task aktif untuk seluruh driver saat ini.');
-      } else {
-        const driverMap = allTasksResult.data;
-        const driverPhoneMap = getDriverPhonesMap();
-
-        for (const driver in driverMap) {
-          const tasks = driverMap[driver];
-          const driverPhone = driverPhoneMap[normalizeText(driver)];
-          const driverDisplay = driverPhone ? '@' + driverPhone + ' (' + driver + ')' : '*' + driver + '*';
-
-          let replyText = '📋 *DAFTAR TASK AKTIF DRIVER*\n';
-          replyText += '👤 Driver: ' + driverDisplay + '\n';
-          replyText += '📦 Total Task Aktif: *' + tasks.length + '*\n';
-          replyText += '───────────────\n';
-
-          for (let i = 0; i < tasks.length; i++) {
-            replyText += (i + 1) + '. *' + tasks[i] + '*\n';
-          }
-
-          sendFonnteMessage(target, replyText);
-          Utilities.sleep(300);
-        }
-      }
-
-      return jsonResponse({ status: 'success', action: 'share.all' });
-    }
-
-    // 3. PERINTAH: INPUT PELANGGAR BARU (Contoh: @ sandi,bukti onhold lemah,25/09)
-    if (message.startsWith('@') && message.includes(',')) {
-      let replyTarget = (groupName !== '' || groupId !== '') ? (groupId || target) : target;
-      handleAddPenaltyCommand(message, replyTarget);
-      return jsonResponse({ status: 'success', action: 'add_penalty' });
-    }
-
-    // 4. PERINTAH: @AT / @TASK
-    if (lowerMsg.startsWith('@at') || lowerMsg.startsWith('@task')) {
-      let driverName = lowerMsg.startsWith('@at') ? message.substring(3).trim() : message.substring(5).trim();
-      let replyText = '';
-
-      if (!driverName) {
-        const lookupResult = getDriverByPhoneNumber(senderNumber);
-        if (lookupResult.success) {
-          driverName = lookupResult.driverName;
-        } else {
-          replyText = '⚠️ Nomor WA Anda (*' + senderNumber + '*) belum terdaftar di sheet *Data Driver*.\n\n';
-          replyText += '💡 Silakan ketik nama driver manual, contoh:\n*@at ABD MUTHALIB*';
-        }
-      }
-
-      if (driverName && !replyText) {
-        const result = getTasksByDriver(driverName);
-
-        if (!result.success) {
-          replyText = '⚠️ Gagal mengambil data task: ' + result.message;
-        } else if (!result.driverFound) {
-          replyText = '❌ Driver dengan nama "*' + driverName + '*" tidak ditemukan di Spreadsheet.';
-        } else if (result.totalTask === 0) {
-          replyText = '✅ Tidak ada task pending/aktif untuk driver *' + result.driver + '*.';
-        } else {
-          const driverPhoneMap = getDriverPhonesMap();
-          const driverPhone = driverPhoneMap[normalizeText(result.driver)];
-          const driverDisplay = driverPhone ? '@' + driverPhone + ' (' + result.driver + ')' : '*' + result.driver + '*';
-
-          replyText = '📋 *DAFTAR TASK AKTIF DRIVER*\n';
-          replyText += '👤 Driver: ' + driverDisplay + '\n';
-          replyText += '📦 Total Task Aktif: *' + result.totalTask + '*\n';
-          replyText += '───────────────\n';
-
-          for (let i = 0; i < result.tasks.length; i++) {
-            replyText += (i + 1) + '. *' + result.tasks[i] + '*\n';
-          }
-        }
-      }
-
-      if (target) sendFonnteMessage(target, replyText);
-      return jsonResponse({ status: 'success', reply: replyText });
-    }
-
-    // 5. PERINTAH: CEK RESI
-    let cleanInput = message.replace(/^@cek/i, '').trim();
-    let digitsOnly = cleanInput.replace(/\D/g, '');
-
-    if (cleanInput.toUpperCase().startsWith('SPX') || digitsOnly.length === 12) {
-      let fullResi = cleanInput.toUpperCase();
-      if (!fullResi.startsWith('SPXID') && digitsOnly.length === 12) {
-        fullResi = 'SPXID' + digitsOnly;
-      }
-
-      const trackingResult = getTaskDetailsByResiHybrid(fullResi, digitsOnly);
-
-      if (trackingResult.found) {
-        let replyText = '🔎 *DETAIL RESI PAKET*\n';
-        replyText += '───────────────\n';
-        replyText += '📌 No. Resi: *' + trackingResult.resi + '*\n';
-        
-        if (trackingResult.taskId && trackingResult.taskId !== '-' && trackingResult.taskId !== '0') {
-          replyText += '🆔 Task ID: *' + trackingResult.taskId + '*\n';
-        }
-        
-        replyText += '📊 Status: *' + trackingResult.status + '*\n';
-        replyText += '👤 Driver: *' + trackingResult.driver + '*\n';
-        replyText += '📍 Area: *' + trackingResult.district + '*\n';
-        if (trackingResult.price) {
-          replyText += '💰 COD Amount: *' + trackingResult.price + '*\n';
-        }
-
-        if (target) sendFonnteMessage(target, replyText);
-        return jsonResponse({ status: 'success', action: 'check_resi' });
-      } else if (message.toLowerCase().startsWith('@cek')) {
-        let replyText = '❌ Resi *' + cleanInput + '* tidak ditemukan di Spreadsheet.';
-        if (target) sendFonnteMessage(target, replyText);
-        return jsonResponse({ status: 'not_found' });
-      }
-    }
-
-    return jsonResponse({ status: 'ignored' });
-
-  } catch (error) {
-    return jsonResponse({ status: 'error', message: error.message });
-  }
-}
-
-/*******************************************************
- * FUNGSI BROADCAST OTOMATIS JAM 06:00 WIB (KE 2 GRUP)
- *******************************************************/
-function broadcastActivePenaltiesDaily() {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
-    if (!sheet) return;
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return;
-
-    let activeList = [];
-
-    // Filter seluruh pelanggar yang berstatus 'Aktif'
-    for (let r = 1; r < data.length; r++) {
-      let name = String(data[r][4] || '').trim();
-      let pel = String(data[r][5] || '').trim();
-      let sDate = data[r][6];
-      let eDate = data[r][7];
-      let st = String(data[r][8] || '').trim().toLowerCase();
-
-      if (name !== '' && st === 'aktif') {
-        let sDateFormatted = parseDateStringOnly(sDate);
-        let eDateFormatted = parseDateStringOnly(eDate);
-
-        activeList.push({
-          nama: name,
-          pelanggaran: pel,
-          start: sDateFormatted,
-          end: eDateFormatted
-        });
-      }
-    }
-
-    // JIKA TIDAK ADA SANKSI AKTIF -> DIAM / JANGAN KIRIM
-    if (activeList.length === 0) {
-      Logger.log('Broadcast Jam 06:00: Tidak ada sanksi aktif.');
-      return;
-    }
-
-    // SUSUN PESAN BROADCAST
-    let broadcastMessage = `📢 *PERINGATAN SANKSI NAMA PELANGGAR*\n`;
-    broadcastMessage += `📅 *SANGKAPURA HUB - 06:00 WIB*\n`;
-    broadcastMessage += `───────────────\n\n`;
-
-    for (let idx = 0; idx < activeList.length; idx++) {
-      let item = activeList[idx];
-      broadcastMessage += `*${item.nama}*\n`;
-      broadcastMessage += `❌ Pelanggaran: *${item.pelanggaran}*\n`;
-      broadcastMessage += `🗓️ Masa Sanksi: *${item.start} - ${item.end}*\n`;
-      broadcastMessage += `────────────────\n`;
-    }
-
-    broadcastMessage += `\n💡 _Mohon melakukan vermuk sebelum jam 08:00 WIB dan jangan terlambat untuk menghindari lama sanksi di perpanjangan._`;
-
-    // KIRIM KEDUA GRUP WHATSAPP TARGET
-    for (let i = 0; i < CONFIG.BROADCAST_GROUPS.length; i++) {
-      let targetGroupId = CONFIG.BROADCAST_GROUPS[i];
-      sendFonnteMessage(targetGroupId, broadcastMessage);
-      Utilities.sleep(500); // Delay 0.5 detik antar grup
-    }
-
-  } catch (err) {
-    Logger.log('Error broadcastActivePenaltiesDaily: ' + err.message);
-  }
-}
-
-/*******************************************************
- * FUNGSI HELPER NAMA DRIVER & LOGIKA PELANGGAR
- *******************************************************/
-function getFullDriverName(inputName) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
-    if (!sheet) return inputName.toUpperCase();
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return inputName.toUpperCase();
-
-    const headers = data[0];
-    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
-    if (driverCol === -1) return inputName.toUpperCase();
-
-    const target = normalizeText(inputName);
-
-    for (let r = 1; r < data.length; r++) {
-      let fullName = String(data[r][driverCol] || '').trim();
-      let normalizedFull = normalizeText(fullName);
-
-      if (normalizedFull !== '' && (normalizedFull === target || normalizedFull.includes(target) || target.includes(normalizedFull))) {
-        return fullName.toUpperCase();
-      }
-    }
-  } catch (err) {
-    Logger.log('Error getFullDriverName: ' + err.message);
-  }
-  return inputName.toUpperCase();
-}
-
-function handleAddPenaltyCommand(rawMessage, replyTarget) {
-  try {
-    let cleanText = rawMessage.substring(1).trim();
-    let parts = cleanText.split(',');
-
-    if (parts.length < 3) {
-      if (replyTarget) {
-        sendFonnteMessage(replyTarget, '⚠️ *Format Salah!*\nGunakan format: *@ nama,pelanggaran,dd/mm*\nContoh: *@ sandi,bukti onhold lemah,25/09*');
-      }
-      return;
-    }
-
-    let inputNama = parts[0].trim();
-    let rawPelanggaran = parts[1].trim().toUpperCase();
-    let rawStartDateInput = parts[2].trim();
-
-    let fullDriverName = getFullDriverName(inputNama);
-
-    let today = new Date();
-    let year = today.getFullYear();
-    let dateParts = rawStartDateInput.split('/');
-
-    if (dateParts.length < 2) {
-      if (replyTarget) {
-        sendFonnteMessage(replyTarget, '⚠️ *Format Tanggal Salah!*\nGunakan format dd/mm (Contoh: 25/09)');
-      }
-      return;
-    }
-
-    let day = parseInt(dateParts[0], 10);
-    let month = parseInt(dateParts[1], 10) - 1;
-    let startDateObj = new Date(year, month, day);
-
-    if (isNaN(startDateObj.getTime())) {
-      if (replyTarget) {
-        sendFonnteMessage(replyTarget, '⚠️ Tanggal tidak valid. Mohon periksa kembali.');
-      }
-      return;
-    }
-
-    let endDateObj = new Date(startDateObj);
-    endDateObj.setDate(endDateObj.getDate() + 14);
-
-    let startDateStr = Utilities.formatDate(startDateObj, 'Asia/Jakarta', 'dd/MM/yyyy');
-    let endDateStr = Utilities.formatDate(endDateObj, 'Asia/Jakarta', 'dd/MM/yyyy');
-
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
-
-    if (!sheet) return;
-
-    const lastRow = sheet.getLastRow();
-    let targetRow = 2;
-    let dataE = sheet.getRange(1, 5, Math.max(lastRow, 1), 1).getValues();
-
-    for (let i = 1; i < dataE.length; i++) {
-      if (dataE[i][0] === '' || dataE[i][0] === null) {
-        targetRow = i + 1;
-        break;
-      } else {
-        targetRow = i + 2;
-      }
-    }
-
-    sheet.getRange(targetRow, 5).setValue(fullDriverName);
-    sheet.getRange(targetRow, 6).setValue(rawPelanggaran);
-    sheet.getRange(targetRow, 7).setValue(startDateStr);
-    sheet.getRange(targetRow, 8).setValue(endDateStr);
-    sheet.getRange(targetRow, 9).setValue('Aktif');
-
-    if (replyTarget) {
-      const updatedData = sheet.getDataRange().getValues();
-      let activeList = [];
-
-      for (let r = 1; r < updatedData.length; r++) {
-        let name = String(updatedData[r][4] || '').trim();
-        let pel = String(updatedData[r][5] || '').trim();
-        let sDate = updatedData[r][6];
-        let eDate = updatedData[r][7];
-        let st = String(updatedData[r][8] || '').trim().toLowerCase();
-
-        if (name !== '' && st === 'aktif') {
-          let sDateFormatted = parseDateStringOnly(sDate);
-          let eDateFormatted = parseDateStringOnly(eDate);
-
-          activeList.push({
-            nama: name,
-            pelanggaran: pel,
-            start: sDateFormatted,
-            end: eDateFormatted
+        const response = await fetch(WEB_APP_URL);
+        const res = await response.json();
+        select.innerHTML = '';
+
+        if (res.status === 'success' && res.data.length > 0) {
+          res.data.forEach(function(kurir) {
+            const opt = document.createElement('option');
+            opt.value = kurir;
+            opt.textContent = kurir;
+            select.appendChild(opt);
           });
+        } else {
+          select.innerHTML = '<option value="">NO TARGET DETECTED</option>';
         }
+      } catch (err) {
+        select.innerHTML = '<option value="">CONNECTION FAILED</option>';
+        tampilkanStatus('error', 'Gagal terhubung ke Database: ' + err);
       }
-
-      let replyMessage = `✅ *DATA PELANGGAR BERHASIL DITAMBAHKAN*\n\n`;
-      replyMessage += `📢 *PERINGATAN SANKSI NAMA PELANGGAR*\n`;
-      replyMessage += `📅 *SANGKAPURA HUB*\n`;
-      replyMessage += `───────────────\n\n`;
-
-      if (activeList.length === 0) {
-        replyMessage += `(Tidak ada pelanggar dengan status Aktif)\n`;
-      } else {
-        for (let idx = 0; idx < activeList.length; idx++) {
-          let item = activeList[idx];
-          replyMessage += `*${item.nama}*\n`;
-          replyMessage += `❌ Pelanggaran: *${item.pelanggaran}*\n`;
-          replyMessage += `🗓️ Masa Sanksi: *${item.start} - ${item.end}*\n`;
-          replyMessage += `────────────────\n`;
-        }
-      }
-
-      sendFonnteMessage(replyTarget, replyMessage);
-    }
-
-  } catch (err) {
-    Logger.log('Error handleAddPenaltyCommand: ' + err.message);
-  }
-}
-
-/*******************************************************
- * FUNGSI LOG FOTO ABSENSI
- *******************************************************/
-function logPhotoEntry(senderPhone, groupName, groupId, replyTarget) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
-    if (!sheet) return;
-
-    const rawGroupName = String(groupName || '').toLowerCase();
-    const rawGroupId = String(groupId || '').toLowerCase();
-
-    const isAllowedGroup = CONFIG.ALLOWED_GROUPS.some(allowed => {
-      const allowedLower = String(allowed).toLowerCase();
-      return (
-        (rawGroupName !== '' && rawGroupName.includes(allowedLower)) ||
-        (rawGroupId !== '' && rawGroupId.includes(allowedLower))
-      );
-    });
-
-    if (!isAllowedGroup) return;
-
-    const now = new Date();
-    const timestamp = Utilities.formatDate(now, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Jakarta', 'dd/MM/yyyy');
-    
-    let driverName = 'Tidak Terdaftar';
-    if (senderPhone) {
-      const driverLookup = getDriverByPhoneNumber(senderPhone);
-      driverName = driverLookup.success ? driverLookup.driverName : 'No WA: ' + senderPhone;
-    }
-
-    let alreadyLoggedToday = false;
-
-    if (driverName !== 'Tidak Terdaftar' && !driverName.startsWith('No WA:')) {
-      const existingData = sheet.getDataRange().getValues();
-      const targetDriver = normalizeText(driverName);
-
-      for (let r = 1; r < existingData.length; r++) {
-        let rowDateStr = parseDateStringOnly(existingData[r][0]); 
-        let rowDriver = normalizeText(existingData[r][1]);        
-
-        if (rowDriver === targetDriver && rowDateStr === todayStr) {
-          alreadyLoggedToday = true;
-          break;
-        }
-      }
-    }
-
-    const currentHour = parseInt(Utilities.formatDate(now, 'Asia/Jakarta', 'HH'), 10);
-    const currentMinute = parseInt(Utilities.formatDate(now, 'Asia/Jakarta', 'mm'), 10);
-
-    let statusWaktu = '';
-    let isLate = false;
-    
-    if (currentHour < 8 || (currentHour === 8 && currentMinute === 0)) {
-      statusWaktu = '(TEPAT WAKTU)';
-    } else {
-      statusWaktu = '(TERLAMBAT)';
-      isLate = true;
-    }
-
-    sheet.appendRow([
-      timestamp,
-      driverName,
-      statusWaktu
-    ]);
-    
-    if (alreadyLoggedToday) {
-      return;
-    }
-
-    if (driverName !== 'Tidak Terdaftar' && !driverName.startsWith('No WA:')) {
-      handlePenaltyExtensionAndNotify(sheet, driverName, senderPhone, replyTarget, isLate);
-    }
-
-  } catch (err) {
-    Logger.log('Error logPhotoEntry: ' + err.message);
-  }
-}
-
-/*******************************************************
- * FUNGSI CEK & PERPANJANG SANKSI OTOMATIS
- *******************************************************/
-function handlePenaltyExtensionAndNotify(sheetLogFoto, driverName, senderPhone, replyTarget, isLate) {
-  try {
-    const data = sheetLogFoto.getDataRange().getValues();
-    if (data.length < 2) return; 
-
-    let headerRow = data[0];
-    
-    let nameCol = 4;   // E
-    let descCol = 5;   // F
-    let startCol = 6;  // G
-    let endCol = 7;    // H
-    let statusCol = 8; // I
-
-    let nCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.NAMA);
-    if(nCol !== -1) {
-       nameCol = nCol;
-       descCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.PELANGGARAN);
-       startCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.START_DATE);
-       endCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.END_DATE);
-       let sCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.STATUS);
-       if (sCol !== -1) statusCol = sCol;
-    }
-
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    let activePenalty = null;
-    let isFinishedToday = false;
-    const targetDriver = normalizeText(driverName);
-
-    for (let i = 1; i < data.length; i++) {
-      const rowName = normalizeText(data[i][nameCol]);
-      const currentStatus = String(data[i][statusCol] || '').trim().toLowerCase();
-      
-      if (rowName === targetDriver) {
-        if (currentStatus === 'selesai') {
-          return;
-        }
-
-        let startDateStr = data[i][startCol];
-        let endDateStr = data[i][endCol];
-        let desc = String(data[i][descCol] || '-');
-        
-        let startDate = parseDate(startDateStr);
-        let endDate = parseDate(endDateStr);
-        
-        if (startDate && endDate) {
-            startDate.setHours(0,0,0,0);
-            
-            let endDayCompare = new Date(endDate);
-            endDayCompare.setHours(23,59,59,999);
-            
-            if (today > endDayCompare) {
-               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Selesai');
-               return; 
-            }
-
-            if (isLate) {
-              endDate.setDate(endDate.getDate() + 1);
-              let formattedNewEnd = Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy');
-              sheetLogFoto.getRange(i + 1, endCol + 1).setValue(formattedNewEnd);
-            }
-
-            let newEndCompare = new Date(endDate);
-            newEndCompare.setHours(0,0,0,0);
-
-            if (today.getTime() === newEndCompare.getTime()) {
-               isFinishedToday = true;
-               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Selesai');
-               
-               activePenalty = {
-                 desc: desc,
-                 start: Utilities.formatDate(startDate, 'Asia/Jakarta', 'dd/MM/yyyy'),
-                 end: Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy')
-               };
-               break;
-            } 
-            else if (today >= startDate && today <= endDate) {
-               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Aktif');
-
-               activePenalty = {
-                 desc: desc,
-                 start: Utilities.formatDate(startDate, 'Asia/Jakarta', 'dd/MM/yyyy'),
-                 end: Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy')
-               };
-               break; 
-            }
-        }
-      }
-    }
-
-    if (activePenalty && replyTarget) {
-      let driverMention = '@' + senderPhone;
-      let replyMessage = '';
-
-      if (isFinishedToday) {
-          replyMessage += `✅ *PERINGATAN SANKSI SELESAI* ✅\n\n`;
-          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
-          replyMessage += `Vermuk Anda Tercatat Sebelum Jam 08:00 (TEPAT WAKTU)\n\n`;
-          replyMessage += `Sanksi Anda Selesai :\n`;
-          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
-          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end} (Selesai)\n\n`;
-          replyMessage += `Semoga Pelanggaran Tidak Terulang Lagi.\n`;
-          replyMessage += `Mohon tingkatkan kedisiplinan kedepannya.\n`;
-          replyMessage += `Terima kasih.`;
-      } 
-      else if (isLate) {
-          replyMessage += `🚨 *SANKSI DIPERPANJANG!* 🚨\n\n`;
-          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
-          replyMessage += `Vermuk Anda Tercatat Lebih Dari Jam 08:00 (TERLAMBAT)\n\n`;
-          replyMessage += `Karena Anda absen vermuk (TERLAMBAT) hari ini, masa sanksi Anda otomatis diperpanjang 1 hari.\n`;
-          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
-          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end}\n\n`;
-          replyMessage += `Mohon tingkatkan kedisiplinan.\n`;
-          replyMessage += `Jangan vermuk lebih dari jam (08:00) pagi.\n`;
-          replyMessage += `Terima kasih.`;
-      } 
-      else {
-          replyMessage += `⚠️ *PERINGATAN SANKSI AKTIF* ⚠️\n\n`;
-          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
-          replyMessage += `Vermuk Anda Tercatat Sebelum Jam 08:00 (TEPAT WAKTU)\n\n`;
-          replyMessage += `Anda masih dalam masa sanksi berjalan:\n`;
-          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
-          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end}\n\n`;
-          replyMessage += `Mohon tingkatkan kedisiplinan kedepannya.\n`;
-          replyMessage += `Terima kasih.`;
-      }
-      
-      sendFonnteMessage(replyTarget, replyMessage);
-    }
-
-  } catch (err) {
-    Logger.log('Error checkAndNotifyPenalty: ' + err.message);
-  }
-}
-
-/*******************************************************
- * FUNGSI UTILITY & BOT LAINNYA
- *******************************************************/
-function parseDate(dateInput) {
-  if (!dateInput) return null;
-  if (dateInput instanceof Date) {
-     return new Date(dateInput);
-  }
-  if (typeof dateInput === 'string') {
-    let parts = dateInput.trim().split('/');
-    if (parts.length === 3) {
-      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-    }
-  }
-  return null;
-}
-
-function parseDateStringOnly(dateInput) {
-  if (!dateInput) return '';
-  if (dateInput instanceof Date) {
-    return Utilities.formatDate(dateInput, 'Asia/Jakarta', 'dd/MM/yyyy');
-  }
-  if (typeof dateInput === 'string') {
-    let parts = dateInput.trim().split(' ')[0].split('/');
-    if (parts.length === 3) {
-      return parts[0].padStart(2, '0') + '/' + parts[1].padStart(2, '0') + '/' + parts[2];
-    }
-  }
-  return '';
-}
-
-function getDriverPhonesMap() {
-  const phoneMap = {};
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
-    if (!sheet) return phoneMap;
-
-    const data = sheet.getDataRange().getValues();
-    if (!data || data.length < 2) return phoneMap;
-
-    const headers = data[0];
-    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
-    const phoneCol = findHeader(headers, CONFIG.MAP_PHONE_HEADERS);
-
-    if (driverCol === -1 || phoneCol === -1) return phoneMap;
-
-    for (let row = 1; row < data.length; row++) {
-      const rawDriver = normalizeText(data[row][driverCol]);
-      const cleanPhone = cleanPhoneNumber(data[row][phoneCol]);
-      if (rawDriver && cleanPhone) {
-        phoneMap[rawDriver] = cleanPhone;
-      }
-    }
-  } catch (err) {
-    Logger.log('Error getDriverPhonesMap: ' + err.message);
-  }
-  return phoneMap;
-}
-
-function getTaskDetailsByResiHybrid(fullResi, digitsOnly) {
-  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  
-  const mainSheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
-  const resiSheet = spreadsheet.getSheetByName(CONFIG.SHEET_RESI_NAME);
-
-  let foundTaskId = '-';
-  let mainSheetFound = false;
-  let mainDataObj = {};
-
-  if (mainSheet) {
-    const dataMain = mainSheet.getDataRange().getValues();
-    if (dataMain && dataMain.length >= 2) {
-      const headersMain = dataMain[0];
-      const resiCol = findHeader(headersMain, CONFIG.RESI_HEADERS);
-      const taskCol = findHeader(headersMain, CONFIG.TASK_HEADERS);
-      const driverCol = findHeader(headersMain, CONFIG.DRIVER_HEADERS);
-      const statusCol = findHeader(headersMain, CONFIG.STATUS_HEADERS);
-
-      if (resiCol !== -1) {
-        for (let row = 1; row < dataMain.length; row++) {
-          const valResi = normalizeText(dataMain[row][resiCol]);
-          if (valResi.includes(normalizeText(fullResi)) || (digitsOnly && valResi.includes(digitsOnly))) {
-            mainSheetFound = true;
-            foundTaskId = taskCol !== -1 ? String(dataMain[row][taskCol] || '-').trim() : '-';
-            mainDataObj = {
-              resi: String(dataMain[row][resiCol] || fullResi).trim(),
-              taskId: foundTaskId,
-              driver: driverCol !== -1 ? String(dataMain[row][driverCol] || '').trim() : '',
-              status: statusCol !== -1 ? String(dataMain[row][statusCol] || '').trim() : ''
-            };
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  if (resiSheet) {
-    const dataResi = resiSheet.getDataRange().getValues();
-    if (dataResi && dataResi.length >= 2) {
-      const headersResi = dataResi[0];
-      const resiCol = findHeader(headersResi, CONFIG.RESI_HEADERS);
-      const driverCol = findHeader(headersResi, CONFIG.DRIVER_HEADERS);
-      const statusCol = findHeader(headersResi, CONFIG.STATUS_HEADERS);
-      const districtCol = findHeader(headersResi, CONFIG.DISTRICT_HEADERS);
-      const priceCol = findHeader(headersResi, CONFIG.PRICE_HEADERS);
-
-      if (resiCol !== -1) {
-        for (let row = 1; row < dataResi.length; row++) {
-          const valResi = normalizeText(dataResi[row][resiCol]);
-          
-          if (valResi.includes(normalizeText(fullResi)) || (digitsOnly && valResi.includes(digitsOnly))) {
-            
-            let rawPrice = priceCol !== -1 ? dataResi[row][priceCol] : '';
-            let formattedPrice = '';
-            if (rawPrice !== '' && !isNaN(rawPrice)) {
-              formattedPrice = 'Rp ' + Number(rawPrice).toLocaleString('id-ID');
-            } else if (rawPrice) {
-              formattedPrice = String(rawPrice);
-            }
-
-            let driverVal = mainDataObj.driver || (driverCol !== -1 ? String(dataResi[row][driverCol] || '').trim() : '');
-            if (!driverVal || driverVal === '0') driverVal = 'Belum Ada Driver';
-
-            let statusVal = mainDataObj.status || (statusCol !== -1 ? String(dataResi[row][statusCol] || '').trim() : '-');
-
-            return {
-              found: true,
-              resi: String(dataResi[row][resiCol] || fullResi).trim(),
-              taskId: foundTaskId,
-              driver: driverVal,
-              status: statusVal,
-              district: districtCol !== -1 ? String(dataResi[row][districtCol] || '-').trim() : '-',
-              price: formattedPrice
-            };
-          }
-        }
-      }
-    }
-  }
-
-  if (mainSheetFound) {
-    let driverVal = mainDataObj.driver;
-    if (!driverVal || driverVal === '0') driverVal = 'Belum Ada Driver';
-
-    return {
-      found: true,
-      resi: mainDataObj.resi,
-      taskId: mainDataObj.taskId,
-      driver: driverVal,
-      status: mainDataObj.status || '-',
-      district: '-',
-      price: ''
     };
-  }
 
-  return { found: false };
-}
+    // 2. Nyalakan / Matikan Kamera (Full Box Ratio)
+    async function toggleKamera() {
+      const btnCam = document.getElementById('btnKamera');
+      const btnTorch = document.getElementById('btnSenter');
 
-function getAllDriversActiveTasks() {
-  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  let sheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
-
-  if (!sheet) return { success: false, message: 'Sheet task tidak ditemukan' };
-
-  const data = sheet.getDataRange().getValues();
-  if (!data || data.length < 2) return { success: false, message: 'Data spreadsheet kosong' };
-
-  const headers = data[0];
-  const driverColumn = findHeader(headers, CONFIG.DRIVER_HEADERS);
-  const taskColumn = findHeader(headers, CONFIG.TASK_HEADERS);
-  const statusColumn = findHeader(headers, CONFIG.STATUS_HEADERS);
-
-  if (driverColumn === -1 || taskColumn === -1) {
-    return { success: false, message: 'Kolom Driver atau Task ID tidak ditemukan' };
-  }
-
-  const driverMap = {};
-
-  for (let row = 1; row < data.length; row++) {
-    const rawDriver = String(data[row][driverColumn] || '').trim();
-    const taskId = String(data[row][taskColumn] || '').trim();
-    let statusValue = statusColumn !== -1 ? normalizeText(data[row][statusColumn]) : '';
-
-    if (rawDriver && taskId) {
-      const isAllowed = CONFIG.ALLOWED_STATUSES.some(allowed => statusValue === allowed || statusValue.includes(allowed));
-
-      if (isAllowed) {
-        if (!driverMap[rawDriver]) driverMap[rawDriver] = [];
-        if (!driverMap[rawDriver].includes(taskId)) driverMap[rawDriver].push(taskId);
-      }
-    }
-  }
-
-  return { success: true, data: driverMap };
-}
-
-function getDriverByPhoneNumber(phoneNumber) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
-
-    if (!sheet) return { success: false, message: 'Sheet "Data Driver" tidak ditemukan' };
-
-    const data = sheet.getDataRange().getValues();
-    if (!data || data.length < 2) return { success: false, message: 'Data sheet "Data Driver" kosong' };
-
-    const headers = data[0];
-    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
-    const phoneCol = findHeader(headers, CONFIG.MAP_PHONE_HEADERS);
-
-    if (driverCol === -1 || phoneCol === -1) return { success: false, message: 'Header kolom pada sheet Data Driver tidak sesuai' };
-
-    const cleanInputPhone = cleanPhoneNumber(phoneNumber);
-
-    for (let row = 1; row < data.length; row++) {
-      const currentPhone = cleanPhoneNumber(data[row][phoneCol]);
-      if (currentPhone && currentPhone === cleanInputPhone) {
-        return { success: true, driverName: String(data[row][driverCol]).trim() };
+      if (!isScanning) {
+        try {
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            {
+              fps: 15,
+              aspectRatio: 1.333334,
+              qrbox: function(viewfinderWidth, viewfinderHeight) {
+                return {
+                  width: Math.floor(viewfinderWidth * 0.96),
+                  height: Math.floor(viewfinderHeight * 0.96)
+                };
+              }
+            },
+            onScanSuccess,
+            () => {}
+          );
+          isScanning = true;
+          btnCam.textContent = '⏹ DEACTIVATE CAM';
+          btnCam.className = 'btn-cam-stop';
+          btnTorch.disabled = false;
+          document.getElementById('statusBox').style.display = 'none';
+        } catch (err) {
+          tampilkanStatus('error', 'CAMERA ACCESS DENIED: ' + err);
+        }
+      } else {
+        await hentikanKamera();
       }
     }
 
-    return { success: false, message: 'Nomor tidak terdaftar' };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function sendFonnteMessage(targetNumber, messageText) {
-  const url = 'https://api.fonnte.com/send';
-  const payload = { target: targetNumber, message: messageText };
-  const options = {
-    method: 'post',
-    headers: { 'Authorization': CONFIG.FONNTE_TOKEN },
-    payload: payload,
-    muteHttpExceptions: true
-  };
-
-  try {
-    UrlFetchApp.fetch(url, options);
-  } catch (err) {
-    Logger.log('Error Sending Fonnte Message: ' + err.message);
-  }
-}
-
-function getTasksByDriver(driverName) {
-  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  let sheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
-
-  if (!sheet) return { success: false, message: 'Sheet task tidak ditemukan' };
-
-  const data = sheet.getDataRange().getValues();
-  if (!data || data.length < 2) return { success: false, message: 'Data spreadsheet kosong' };
-
-  const headers = data[0];
-  const driverColumn = findHeader(headers, CONFIG.DRIVER_HEADERS);
-  const taskColumn = findHeader(headers, CONFIG.TASK_HEADERS);
-  const statusColumn = findHeader(headers, CONFIG.STATUS_HEADERS);
-
-  if (driverColumn === -1 || taskColumn === -1) {
-    return { success: false, message: 'Kolom Driver atau Task ID tidak ditemukan' };
-  }
-
-  const targetDriver = normalizeText(driverName);
-  const tasks = [];
-  let driverFound = false;
-
-  for (let row = 1; row < data.length; row++) {
-    const currentDriver = normalizeText(data[row][driverColumn]);
-    const taskId = String(data[row][taskColumn] || '').trim();
-    let statusValue = statusColumn !== -1 ? normalizeText(data[row][statusColumn]) : '';
-
-    if (currentDriver === targetDriver) {
-      driverFound = true;
-      const isAllowed = CONFIG.ALLOWED_STATUSES.some(allowed => statusValue === allowed || statusValue.includes(allowed));
-
-      if (taskId && isAllowed) {
-        if (!tasks.includes(taskId)) tasks.push(taskId);
+    async function hentikanKamera() {
+      if (html5QrCode && isScanning) {
+        if (isTorchOn) await setTorchState(false);
+        await html5QrCode.stop();
+        isScanning = false;
+        const btnCam = document.getElementById('btnKamera');
+        const btnTorch = document.getElementById('btnSenter');
+        btnCam.textContent = '📷 ACTIVATE CAM';
+        btnCam.className = 'btn-cam-start';
+        btnTorch.disabled = true;
       }
     }
-  }
 
-  return {
-    success: true,
-    driver: driverName,
-    driverFound: driverFound,
-    totalTask: tasks.length,
-    tasks: tasks
-  };
-}
-
-function findHeader(headers, allowedHeaders) {
-  for (let i = 0; i < headers.length; i++) {
-    const currentHeader = normalizeText(headers[i]);
-    for (let j = 0; j < allowedHeaders.length; j++) {
-      if (currentHeader === normalizeText(allowedHeaders[j])) return i;
+    // 3. Kontrol Senter (Flashlight)
+    async function toggleSenter() {
+      if (!isScanning) return;
+      await setTorchState(!isTorchOn);
     }
-  }
-  return -1;
-}
 
-function normalizeText(value) {
-  return String(value || '')
-    .replace(/\u00A0/g, ' ')
-    .replace(/[^\w\s]/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
+    async function setTorchState(state) {
+      const btnTorch = document.getElementById('btnSenter');
+      try {
+        await html5QrCode.applyVideoConstraints({
+          advanced: [{ torch: state }]
+        });
+        isTorchOn = state;
+        btnTorch.textContent = isTorchOn ? '🔦 LIGHT: ON' : '🔦 ILLUMINATE';
+        btnTorch.className = isTorchOn ? 'btn-torch-on' : 'btn-torch-off';
+      } catch (err) {
+        tampilkanStatus('error', 'FLASHLIGHT NOT SUPPORTED ON THIS DEVICE.');
+      }
+    }
 
-function cleanPhoneNumber(phone) {
-  let cleaned = String(phone || '').replace(/\D/g, '');
-  if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);
-  return cleaned;
-}
+    function onScanSuccess(decodedText) {
+      if (isProcessing) return;
+      prosesKirimResi(decodedText);
+    }
 
-function jsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
-}
+    function kirimManual() {
+      const input = document.getElementById('manualInput');
+      if (!input.value.trim()) {
+        tampilkanStatus('error', 'INPUT REQUIRED: Masukkan nomor resi.');
+        return;
+      }
+      prosesKirimResi(input.value.trim());
+      input.value = '';
+    }
+
+    // 4. Kirim Data via POST (Hanya menerima awalan SPXID06)
+    async function prosesKirimResi(nomorResi) {
+      const kurir = document.getElementById('kurirSelect').value;
+      const cekDuplikat = document.getElementById('cekDuplikat').checked;
+      const resiBersih = String(nomorResi).trim().toUpperCase();
+
+      // FILTER: Tolak jika tidak diawali SPXID06
+      if (!resiBersih.startsWith('SPXID06')) {
+        isProcessing = true;
+        bunyiBeep(300, 250);
+        tampilkanStatus('error', '⛔ DITOLAK: "' + resiBersih + '" bukan resi SPXID06');
+        setTimeout(() => { isProcessing = false; }, 1200);
+        return;
+      }
+
+      if (!kurir) {
+        tampilkanStatus('error', 'TARGET REQUIRED: Pilih kurir tujuan!');
+        return;
+      }
+
+      isProcessing = true;
+      bunyiBeep(880, 120);
+      if (navigator.vibrate) navigator.vibrate(120);
+
+      tampilkanStatus('loading', '⏳ TRANSMITTING: ' + resiBersih + '...');
+
+      try {
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ kurir: kurir, resi: resiBersih, cekDuplikat: cekDuplikat })
+        });
+        const res = await response.json();
+
+        if (res.status === 'success') {
+          tampilkanStatus('success', '✅ STORED: ' + res.data.resi);
+          tambahKeRiwayat(res.data);
+        } else if (res.status === 'duplicate') {
+          bunyiBeep(300, 300);
+          tampilkanStatus('duplicate', '⚠️ ALERT: ' + res.message);
+        } else {
+          tampilkanStatus('error', '❌ ERROR: ' + res.message);
+        }
+      } catch (err) {
+        tampilkanStatus('error', '❌ TRANSMISSION FAILED: ' + err);
+      } finally {
+        setTimeout(() => { isProcessing = false; }, 1800);
+      }
+    }
+
+    function tampilkanStatus(tipe, pesan) {
+      const box = document.getElementById('statusBox');
+      box.className = 'status-' + tipe;
+      box.textContent = pesan;
+    }
+
+    function tambahKeRiwayat(data) {
+      totalScan++;
+      document.getElementById('scanCounter').textContent = totalScan + ' SCAN';
+      const list = document.getElementById('historyList');
+      if (totalScan === 1) list.innerHTML = '';
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div>
+          <div class="history-resi">${data.resi}</div>
+          <div class="history-meta">TARGET: <b style="color:var(--orange-neon);">${data.kurir}</b> • ${data.waktu}</div>
+        </div>
+        <div style="color:var(--text-sub); font-size:12px; font-weight:800;">ID#${data.no}</div>
+      `;
+      list.prepend(item);
+    }
+
+    function bunyiBeep(freq, duration) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => { osc.stop(); ctx.close(); }, duration);
+      } catch (e) {}
+    }
+  </script>
+</body>
+</html>
