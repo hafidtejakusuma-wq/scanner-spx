@@ -1,0 +1,1001 @@
+/*******************************************************
+ * BOT WHATSAPP - TASK DRIVER, CEK RESI & ABSEN FOTO (v20.0)
+ * SANGKAPURA HUB (BROADCAST REKAP SANKSI KE 2 GRUP WA)
+ *******************************************************/
+
+const CONFIG = {
+  SPREADSHEET_ID: '1MUzXIiuO6QCCZA1K25-C5szWv5PXPKI5rmCFpiwcJ1k',
+  SHEET_TASK_NAME: '',
+  SHEET_DRIVER_NAME: 'Data Driver',
+  SHEET_RESI_NAME: 'Data Resi',
+  SHEET_LOG_FOTO: 'Log Foto',
+
+  API_SECRET: 'SANGKAPURA_TASK_2026',
+  FONNTE_TOKEN: 'iK3eho2vK7eXNhB4eSQA',
+
+  // TARGET BROADCAST SANKSI AKTIF (2 GRUP WHATSAPP)
+  BROADCAST_GROUPS: [
+    '120363285513625282@g.us', // Grup Sangkapura Hub
+    '120363411194382432@g.us'  // Grup IAM
+  ],
+
+  ALLOWED_GROUPS: [
+    'beban keluarga spx sangkapura hub', 
+    'iam', 
+    '120363285513625282@g.us',
+    '120363411194382432@g.us'
+  ],
+
+  DRIVER_HEADERS: ['Driver Name', 'Nama Driver', 'Driver', 'Nama Kurir', 'Kurir', 'DRIVER NAME', 'NAMA DRIVER'],
+  TASK_HEADERS: ['Task ID', 'TaskID', 'Task', 'TASK ID', 'TASKID'],
+  STATUS_HEADERS: ['Status', 'STATUS', 'Task Status', 'State'],
+
+  RESI_HEADERS: ['Order ID', 'SLS Tracking Number', 'SPX tracking num', 'SPX Tracking Num', 'No Resi', 'Resi', 'Tracking Number', 'SPXID'],
+  DISTRICT_HEADERS: ['District Name', 'District', 'Kecamatan'],
+  PRICE_HEADERS: ['COD Amount', 'Nominal', 'Harga', 'Amount', 'COD', 'Nilai'],
+
+  MAP_DRIVER_HEADERS: ['Nama Driver', 'Driver Name', 'Driver', 'Nama'],
+  MAP_PHONE_HEADERS: ['Nomor WA', 'No WA', 'Phone Number', 'Phone', 'No HP', 'Nomor HP'],
+
+  ALLOWED_STATUSES: ['processed', 'processing', 'partiallyassigned', 'partially_assigned'],
+  
+  PENALTY_HEADERS: {
+    NAMA: ['Nama Pelanggar', 'Nama'],
+    PELANGGARAN: ['Pelanggaran', 'Jenis Pelanggaran'],
+    START_DATE: ['Start Date', 'Mulai'],
+    END_DATE: ['End Date', 'Selesai'],
+    STATUS: ['Status Sanksi', 'Status']
+  }
+};
+
+function doGet(e) {
+  return jsonResponse({
+    success: true,
+    message: 'API & BOT WHATSAPP SANGKAPURA ONLINE',
+    time: new Date().toISOString()
+  });
+}
+
+function doPost(e) {
+  try {
+    let body = {};
+    let rawContents = '';
+
+    if (e && e.postData && e.postData.contents) {
+      rawContents = e.postData.contents;
+      try {
+        body = JSON.parse(rawContents);
+      } catch (err) {
+        body = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      body = e.parameter;
+    }
+
+    let message = body.message || body.pesan || body.text || body.caption || '';
+    let target = body.sender || body.pengirim || '';
+    let senderNumber = body.member || body.username || body.phone || body.sender || '';
+    let groupName = body.group || body.subject || body.group_name || body.name || '';
+    let groupId = body.pengirim || body.sender || '';
+    let urlFile = body.url || body.file || body.media || body.filename || '';
+
+    message = String(message || '').trim();
+    const lowerMsg = message.toLowerCase();
+
+    // DETEKSI FOTO / NON-TEXT MESSAGE
+    let isPhoto = false;
+
+    if (
+      lowerMsg === 'non-text message' || 
+      urlFile !== '' || 
+      body.type === 'image' || 
+      body.type === 'media' ||
+      rawContents.includes('non-text message')
+    ) {
+      isPhoto = true;
+    }
+
+    if (isPhoto) {
+      let replyTarget = (groupName !== '' || groupId !== '') ? (groupId || target) : target;
+      logPhotoEntry(senderNumber, groupName, groupId, replyTarget);
+    }
+
+    // 1. PERINTAH: P / PING
+    if (lowerMsg === 'p' || lowerMsg === 'ping') {
+      const now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'EEEE, dd MMMM yyyy - HH:mm');
+      let replyText = '🤖 *Bot WhatsApp Sangkapura AKTIF & Online!*\n\n';
+      replyText += '📅 _' + now + ' WIB_\n';
+      replyText += '💡 Gunakan perintah *@at* untuk mengecek task driver atau ketik Nomor Resi SPX.';
+
+      if (target) sendFonnteMessage(target, replyText);
+      return jsonResponse({ status: 'success', action: 'ping' });
+    }
+
+    // 2. PERINTAH: @SHARE.ALL
+    if (lowerMsg === '@share.all') {
+      const allTasksResult = getAllDriversActiveTasks();
+
+      if (!allTasksResult.success) {
+        sendFonnteMessage(target, '⚠️ Gagal mengambil data: ' + allTasksResult.message);
+      } else if (Object.keys(allTasksResult.data).length === 0) {
+        sendFonnteMessage(target, '✅ Tidak ada task aktif untuk seluruh driver saat ini.');
+      } else {
+        const driverMap = allTasksResult.data;
+        const driverPhoneMap = getDriverPhonesMap();
+
+        for (const driver in driverMap) {
+          const tasks = driverMap[driver];
+          const driverPhone = driverPhoneMap[normalizeText(driver)];
+          const driverDisplay = driverPhone ? '@' + driverPhone + ' (' + driver + ')' : '*' + driver + '*';
+
+          let replyText = '📋 *DAFTAR TASK AKTIF DRIVER*\n';
+          replyText += '👤 Driver: ' + driverDisplay + '\n';
+          replyText += '📦 Total Task Aktif: *' + tasks.length + '*\n';
+          replyText += '───────────────\n';
+
+          for (let i = 0; i < tasks.length; i++) {
+            replyText += (i + 1) + '. *' + tasks[i] + '*\n';
+          }
+
+          sendFonnteMessage(target, replyText);
+          Utilities.sleep(300);
+        }
+      }
+
+      return jsonResponse({ status: 'success', action: 'share.all' });
+    }
+
+    // 3. PERINTAH: INPUT PELANGGAR BARU (Contoh: @ sandi,bukti onhold lemah,25/09)
+    if (message.startsWith('@') && message.includes(',')) {
+      let replyTarget = (groupName !== '' || groupId !== '') ? (groupId || target) : target;
+      handleAddPenaltyCommand(message, replyTarget);
+      return jsonResponse({ status: 'success', action: 'add_penalty' });
+    }
+
+    // 4. PERINTAH: @AT / @TASK
+    if (lowerMsg.startsWith('@at') || lowerMsg.startsWith('@task')) {
+      let driverName = lowerMsg.startsWith('@at') ? message.substring(3).trim() : message.substring(5).trim();
+      let replyText = '';
+
+      if (!driverName) {
+        const lookupResult = getDriverByPhoneNumber(senderNumber);
+        if (lookupResult.success) {
+          driverName = lookupResult.driverName;
+        } else {
+          replyText = '⚠️ Nomor WA Anda (*' + senderNumber + '*) belum terdaftar di sheet *Data Driver*.\n\n';
+          replyText += '💡 Silakan ketik nama driver manual, contoh:\n*@at ABD MUTHALIB*';
+        }
+      }
+
+      if (driverName && !replyText) {
+        const result = getTasksByDriver(driverName);
+
+        if (!result.success) {
+          replyText = '⚠️ Gagal mengambil data task: ' + result.message;
+        } else if (!result.driverFound) {
+          replyText = '❌ Driver dengan nama "*' + driverName + '*" tidak ditemukan di Spreadsheet.';
+        } else if (result.totalTask === 0) {
+          replyText = '✅ Tidak ada task pending/aktif untuk driver *' + result.driver + '*.';
+        } else {
+          const driverPhoneMap = getDriverPhonesMap();
+          const driverPhone = driverPhoneMap[normalizeText(result.driver)];
+          const driverDisplay = driverPhone ? '@' + driverPhone + ' (' + result.driver + ')' : '*' + result.driver + '*';
+
+          replyText = '📋 *DAFTAR TASK AKTIF DRIVER*\n';
+          replyText += '👤 Driver: ' + driverDisplay + '\n';
+          replyText += '📦 Total Task Aktif: *' + result.totalTask + '*\n';
+          replyText += '───────────────\n';
+
+          for (let i = 0; i < result.tasks.length; i++) {
+            replyText += (i + 1) + '. *' + result.tasks[i] + '*\n';
+          }
+        }
+      }
+
+      if (target) sendFonnteMessage(target, replyText);
+      return jsonResponse({ status: 'success', reply: replyText });
+    }
+
+    // 5. PERINTAH: CEK RESI
+    let cleanInput = message.replace(/^@cek/i, '').trim();
+    let digitsOnly = cleanInput.replace(/\D/g, '');
+
+    if (cleanInput.toUpperCase().startsWith('SPX') || digitsOnly.length === 12) {
+      let fullResi = cleanInput.toUpperCase();
+      if (!fullResi.startsWith('SPXID') && digitsOnly.length === 12) {
+        fullResi = 'SPXID' + digitsOnly;
+      }
+
+      const trackingResult = getTaskDetailsByResiHybrid(fullResi, digitsOnly);
+
+      if (trackingResult.found) {
+        let replyText = '🔎 *DETAIL RESI PAKET*\n';
+        replyText += '───────────────\n';
+        replyText += '📌 No. Resi: *' + trackingResult.resi + '*\n';
+        
+        if (trackingResult.taskId && trackingResult.taskId !== '-' && trackingResult.taskId !== '0') {
+          replyText += '🆔 Task ID: *' + trackingResult.taskId + '*\n';
+        }
+        
+        replyText += '📊 Status: *' + trackingResult.status + '*\n';
+        replyText += '👤 Driver: *' + trackingResult.driver + '*\n';
+        replyText += '📍 Area: *' + trackingResult.district + '*\n';
+        if (trackingResult.price) {
+          replyText += '💰 COD Amount: *' + trackingResult.price + '*\n';
+        }
+
+        if (target) sendFonnteMessage(target, replyText);
+        return jsonResponse({ status: 'success', action: 'check_resi' });
+      } else if (message.toLowerCase().startsWith('@cek')) {
+        let replyText = '❌ Resi *' + cleanInput + '* tidak ditemukan di Spreadsheet.';
+        if (target) sendFonnteMessage(target, replyText);
+        return jsonResponse({ status: 'not_found' });
+      }
+    }
+
+    return jsonResponse({ status: 'ignored' });
+
+  } catch (error) {
+    return jsonResponse({ status: 'error', message: error.message });
+  }
+}
+
+/*******************************************************
+ * FUNGSI BROADCAST OTOMATIS JAM 06:00 WIB (KE 2 GRUP)
+ *******************************************************/
+function broadcastActivePenaltiesDaily() {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+
+    let activeList = [];
+
+    // Filter seluruh pelanggar yang berstatus 'Aktif'
+    for (let r = 1; r < data.length; r++) {
+      let name = String(data[r][4] || '').trim();
+      let pel = String(data[r][5] || '').trim();
+      let sDate = data[r][6];
+      let eDate = data[r][7];
+      let st = String(data[r][8] || '').trim().toLowerCase();
+
+      if (name !== '' && st === 'aktif') {
+        let sDateFormatted = parseDateStringOnly(sDate);
+        let eDateFormatted = parseDateStringOnly(eDate);
+
+        activeList.push({
+          nama: name,
+          pelanggaran: pel,
+          start: sDateFormatted,
+          end: eDateFormatted
+        });
+      }
+    }
+
+    // JIKA TIDAK ADA SANKSI AKTIF -> DIAM / JANGAN KIRIM
+    if (activeList.length === 0) {
+      Logger.log('Broadcast Jam 06:00: Tidak ada sanksi aktif.');
+      return;
+    }
+
+    // SUSUN PESAN BROADCAST
+    let broadcastMessage = `📢 *PERINGATAN SANKSI NAMA PELANGGAR*\n`;
+    broadcastMessage += `📅 *SANGKAPURA HUB - 06:00 WIB*\n`;
+    broadcastMessage += `───────────────\n\n`;
+
+    for (let idx = 0; idx < activeList.length; idx++) {
+      let item = activeList[idx];
+      broadcastMessage += `*${item.nama}*\n`;
+      broadcastMessage += `❌ Pelanggaran: *${item.pelanggaran}*\n`;
+      broadcastMessage += `🗓️ Masa Sanksi: *${item.start} - ${item.end}*\n`;
+      broadcastMessage += `────────────────\n`;
+    }
+
+    broadcastMessage += `\n💡 _Mohon melakukan vermuk sebelum jam 08:00 WIB dan jangan terlambat untuk menghindari lama sanksi di perpanjangan._`;
+
+    // KIRIM KEDUA GRUP WHATSAPP TARGET
+    for (let i = 0; i < CONFIG.BROADCAST_GROUPS.length; i++) {
+      let targetGroupId = CONFIG.BROADCAST_GROUPS[i];
+      sendFonnteMessage(targetGroupId, broadcastMessage);
+      Utilities.sleep(500); // Delay 0.5 detik antar grup
+    }
+
+  } catch (err) {
+    Logger.log('Error broadcastActivePenaltiesDaily: ' + err.message);
+  }
+}
+
+/*******************************************************
+ * FUNGSI HELPER NAMA DRIVER & LOGIKA PELANGGAR
+ *******************************************************/
+function getFullDriverName(inputName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
+    if (!sheet) return inputName.toUpperCase();
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return inputName.toUpperCase();
+
+    const headers = data[0];
+    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
+    if (driverCol === -1) return inputName.toUpperCase();
+
+    const target = normalizeText(inputName);
+
+    for (let r = 1; r < data.length; r++) {
+      let fullName = String(data[r][driverCol] || '').trim();
+      let normalizedFull = normalizeText(fullName);
+
+      if (normalizedFull !== '' && (normalizedFull === target || normalizedFull.includes(target) || target.includes(normalizedFull))) {
+        return fullName.toUpperCase();
+      }
+    }
+  } catch (err) {
+    Logger.log('Error getFullDriverName: ' + err.message);
+  }
+  return inputName.toUpperCase();
+}
+
+function handleAddPenaltyCommand(rawMessage, replyTarget) {
+  try {
+    let cleanText = rawMessage.substring(1).trim();
+    let parts = cleanText.split(',');
+
+    if (parts.length < 3) {
+      if (replyTarget) {
+        sendFonnteMessage(replyTarget, '⚠️ *Format Salah!*\nGunakan format: *@ nama,pelanggaran,dd/mm*\nContoh: *@ sandi,bukti onhold lemah,25/09*');
+      }
+      return;
+    }
+
+    let inputNama = parts[0].trim();
+    let rawPelanggaran = parts[1].trim().toUpperCase();
+    let rawStartDateInput = parts[2].trim();
+
+    let fullDriverName = getFullDriverName(inputNama);
+
+    let today = new Date();
+    let year = today.getFullYear();
+    let dateParts = rawStartDateInput.split('/');
+
+    if (dateParts.length < 2) {
+      if (replyTarget) {
+        sendFonnteMessage(replyTarget, '⚠️ *Format Tanggal Salah!*\nGunakan format dd/mm (Contoh: 25/09)');
+      }
+      return;
+    }
+
+    let day = parseInt(dateParts[0], 10);
+    let month = parseInt(dateParts[1], 10) - 1;
+    let startDateObj = new Date(year, month, day);
+
+    if (isNaN(startDateObj.getTime())) {
+      if (replyTarget) {
+        sendFonnteMessage(replyTarget, '⚠️ Tanggal tidak valid. Mohon periksa kembali.');
+      }
+      return;
+    }
+
+    let endDateObj = new Date(startDateObj);
+    endDateObj.setDate(endDateObj.getDate() + 14);
+
+    let startDateStr = Utilities.formatDate(startDateObj, 'Asia/Jakarta', 'dd/MM/yyyy');
+    let endDateStr = Utilities.formatDate(endDateObj, 'Asia/Jakarta', 'dd/MM/yyyy');
+
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
+
+    if (!sheet) return;
+
+    const lastRow = sheet.getLastRow();
+    let targetRow = 2;
+    let dataE = sheet.getRange(1, 5, Math.max(lastRow, 1), 1).getValues();
+
+    for (let i = 1; i < dataE.length; i++) {
+      if (dataE[i][0] === '' || dataE[i][0] === null) {
+        targetRow = i + 1;
+        break;
+      } else {
+        targetRow = i + 2;
+      }
+    }
+
+    sheet.getRange(targetRow, 5).setValue(fullDriverName);
+    sheet.getRange(targetRow, 6).setValue(rawPelanggaran);
+    sheet.getRange(targetRow, 7).setValue(startDateStr);
+    sheet.getRange(targetRow, 8).setValue(endDateStr);
+    sheet.getRange(targetRow, 9).setValue('Aktif');
+
+    if (replyTarget) {
+      const updatedData = sheet.getDataRange().getValues();
+      let activeList = [];
+
+      for (let r = 1; r < updatedData.length; r++) {
+        let name = String(updatedData[r][4] || '').trim();
+        let pel = String(updatedData[r][5] || '').trim();
+        let sDate = updatedData[r][6];
+        let eDate = updatedData[r][7];
+        let st = String(updatedData[r][8] || '').trim().toLowerCase();
+
+        if (name !== '' && st === 'aktif') {
+          let sDateFormatted = parseDateStringOnly(sDate);
+          let eDateFormatted = parseDateStringOnly(eDate);
+
+          activeList.push({
+            nama: name,
+            pelanggaran: pel,
+            start: sDateFormatted,
+            end: eDateFormatted
+          });
+        }
+      }
+
+      let replyMessage = `✅ *DATA PELANGGAR BERHASIL DITAMBAHKAN*\n\n`;
+      replyMessage += `📢 *PERINGATAN SANKSI NAMA PELANGGAR*\n`;
+      replyMessage += `📅 *SANGKAPURA HUB*\n`;
+      replyMessage += `───────────────\n\n`;
+
+      if (activeList.length === 0) {
+        replyMessage += `(Tidak ada pelanggar dengan status Aktif)\n`;
+      } else {
+        for (let idx = 0; idx < activeList.length; idx++) {
+          let item = activeList[idx];
+          replyMessage += `*${item.nama}*\n`;
+          replyMessage += `❌ Pelanggaran: *${item.pelanggaran}*\n`;
+          replyMessage += `🗓️ Masa Sanksi: *${item.start} - ${item.end}*\n`;
+          replyMessage += `────────────────\n`;
+        }
+      }
+
+      sendFonnteMessage(replyTarget, replyMessage);
+    }
+
+  } catch (err) {
+    Logger.log('Error handleAddPenaltyCommand: ' + err.message);
+  }
+}
+
+/*******************************************************
+ * FUNGSI LOG FOTO ABSENSI
+ *******************************************************/
+function logPhotoEntry(senderPhone, groupName, groupId, replyTarget) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_LOG_FOTO);
+    if (!sheet) return;
+
+    const rawGroupName = String(groupName || '').toLowerCase();
+    const rawGroupId = String(groupId || '').toLowerCase();
+
+    const isAllowedGroup = CONFIG.ALLOWED_GROUPS.some(allowed => {
+      const allowedLower = String(allowed).toLowerCase();
+      return (
+        (rawGroupName !== '' && rawGroupName.includes(allowedLower)) ||
+        (rawGroupId !== '' && rawGroupId.includes(allowedLower))
+      );
+    });
+
+    if (!isAllowedGroup) return;
+
+    const now = new Date();
+    const timestamp = Utilities.formatDate(now, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm:ss');
+    const todayStr = Utilities.formatDate(now, 'Asia/Jakarta', 'dd/MM/yyyy');
+    
+    let driverName = 'Tidak Terdaftar';
+    if (senderPhone) {
+      const driverLookup = getDriverByPhoneNumber(senderPhone);
+      driverName = driverLookup.success ? driverLookup.driverName : 'No WA: ' + senderPhone;
+    }
+
+    let alreadyLoggedToday = false;
+
+    if (driverName !== 'Tidak Terdaftar' && !driverName.startsWith('No WA:')) {
+      const existingData = sheet.getDataRange().getValues();
+      const targetDriver = normalizeText(driverName);
+
+      for (let r = 1; r < existingData.length; r++) {
+        let rowDateStr = parseDateStringOnly(existingData[r][0]); 
+        let rowDriver = normalizeText(existingData[r][1]);        
+
+        if (rowDriver === targetDriver && rowDateStr === todayStr) {
+          alreadyLoggedToday = true;
+          break;
+        }
+      }
+    }
+
+    const currentHour = parseInt(Utilities.formatDate(now, 'Asia/Jakarta', 'HH'), 10);
+    const currentMinute = parseInt(Utilities.formatDate(now, 'Asia/Jakarta', 'mm'), 10);
+
+    let statusWaktu = '';
+    let isLate = false;
+    
+    if (currentHour < 8 || (currentHour === 8 && currentMinute === 0)) {
+      statusWaktu = '(TEPAT WAKTU)';
+    } else {
+      statusWaktu = '(TERLAMBAT)';
+      isLate = true;
+    }
+
+    sheet.appendRow([
+      timestamp,
+      driverName,
+      statusWaktu
+    ]);
+    
+    if (alreadyLoggedToday) {
+      return;
+    }
+
+    if (driverName !== 'Tidak Terdaftar' && !driverName.startsWith('No WA:')) {
+      handlePenaltyExtensionAndNotify(sheet, driverName, senderPhone, replyTarget, isLate);
+    }
+
+  } catch (err) {
+    Logger.log('Error logPhotoEntry: ' + err.message);
+  }
+}
+
+/*******************************************************
+ * FUNGSI CEK & PERPANJANG SANKSI OTOMATIS
+ *******************************************************/
+function handlePenaltyExtensionAndNotify(sheetLogFoto, driverName, senderPhone, replyTarget, isLate) {
+  try {
+    const data = sheetLogFoto.getDataRange().getValues();
+    if (data.length < 2) return; 
+
+    let headerRow = data[0];
+    
+    let nameCol = 4;   // E
+    let descCol = 5;   // F
+    let startCol = 6;  // G
+    let endCol = 7;    // H
+    let statusCol = 8; // I
+
+    let nCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.NAMA);
+    if(nCol !== -1) {
+       nameCol = nCol;
+       descCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.PELANGGARAN);
+       startCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.START_DATE);
+       endCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.END_DATE);
+       let sCol = findHeader(headerRow, CONFIG.PENALTY_HEADERS.STATUS);
+       if (sCol !== -1) statusCol = sCol;
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let activePenalty = null;
+    let isFinishedToday = false;
+    const targetDriver = normalizeText(driverName);
+
+    for (let i = 1; i < data.length; i++) {
+      const rowName = normalizeText(data[i][nameCol]);
+      const currentStatus = String(data[i][statusCol] || '').trim().toLowerCase();
+      
+      if (rowName === targetDriver) {
+        if (currentStatus === 'selesai') {
+          return;
+        }
+
+        let startDateStr = data[i][startCol];
+        let endDateStr = data[i][endCol];
+        let desc = String(data[i][descCol] || '-');
+        
+        let startDate = parseDate(startDateStr);
+        let endDate = parseDate(endDateStr);
+        
+        if (startDate && endDate) {
+            startDate.setHours(0,0,0,0);
+            
+            let endDayCompare = new Date(endDate);
+            endDayCompare.setHours(23,59,59,999);
+            
+            if (today > endDayCompare) {
+               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Selesai');
+               return; 
+            }
+
+            if (isLate) {
+              endDate.setDate(endDate.getDate() + 1);
+              let formattedNewEnd = Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy');
+              sheetLogFoto.getRange(i + 1, endCol + 1).setValue(formattedNewEnd);
+            }
+
+            let newEndCompare = new Date(endDate);
+            newEndCompare.setHours(0,0,0,0);
+
+            if (today.getTime() === newEndCompare.getTime()) {
+               isFinishedToday = true;
+               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Selesai');
+               
+               activePenalty = {
+                 desc: desc,
+                 start: Utilities.formatDate(startDate, 'Asia/Jakarta', 'dd/MM/yyyy'),
+                 end: Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy')
+               };
+               break;
+            } 
+            else if (today >= startDate && today <= endDate) {
+               sheetLogFoto.getRange(i + 1, statusCol + 1).setValue('Aktif');
+
+               activePenalty = {
+                 desc: desc,
+                 start: Utilities.formatDate(startDate, 'Asia/Jakarta', 'dd/MM/yyyy'),
+                 end: Utilities.formatDate(endDate, 'Asia/Jakarta', 'dd/MM/yyyy')
+               };
+               break; 
+            }
+        }
+      }
+    }
+
+    if (activePenalty && replyTarget) {
+      let driverMention = '@' + senderPhone;
+      let replyMessage = '';
+
+      if (isFinishedToday) {
+          replyMessage += `✅ *PERINGATAN SANKSI SELESAI* ✅\n\n`;
+          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
+          replyMessage += `Vermuk Anda Tercatat Sebelum Jam 08:00 (TEPAT WAKTU)\n\n`;
+          replyMessage += `Sanksi Anda Selesai :\n`;
+          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
+          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end} (Selesai)\n\n`;
+          replyMessage += `Semoga Pelanggaran Tidak Terulang Lagi.\n`;
+          replyMessage += `Mohon tingkatkan kedisiplinan kedepannya.\n`;
+          replyMessage += `Terima kasih.`;
+      } 
+      else if (isLate) {
+          replyMessage += `🚨 *SANKSI DIPERPANJANG!* 🚨\n\n`;
+          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
+          replyMessage += `Vermuk Anda Tercatat Lebih Dari Jam 08:00 (TERLAMBAT)\n\n`;
+          replyMessage += `Karena Anda absen vermuk (TERLAMBAT) hari ini, masa sanksi Anda otomatis diperpanjang 1 hari.\n`;
+          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
+          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end}\n\n`;
+          replyMessage += `Mohon tingkatkan kedisiplinan.\n`;
+          replyMessage += `Jangan vermuk lebih dari jam (08:00) pagi.\n`;
+          replyMessage += `Terima kasih.`;
+      } 
+      else {
+          replyMessage += `⚠️ *PERINGATAN SANKSI AKTIF* ⚠️\n\n`;
+          replyMessage += `Halo ${driverMention} (*${driverName}*),\n`;
+          replyMessage += `Vermuk Anda Tercatat Sebelum Jam 08:00 (TEPAT WAKTU)\n\n`;
+          replyMessage += `Anda masih dalam masa sanksi berjalan:\n`;
+          replyMessage += `❌ Pelanggaran: ${activePenalty.desc}\n`;
+          replyMessage += `🗓️ Masa Sanksi: ${activePenalty.start} - ${activePenalty.end}\n\n`;
+          replyMessage += `Mohon tingkatkan kedisiplinan kedepannya.\n`;
+          replyMessage += `Terima kasih.`;
+      }
+      
+      sendFonnteMessage(replyTarget, replyMessage);
+    }
+
+  } catch (err) {
+    Logger.log('Error checkAndNotifyPenalty: ' + err.message);
+  }
+}
+
+/*******************************************************
+ * FUNGSI UTILITY & BOT LAINNYA
+ *******************************************************/
+function parseDate(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) {
+     return new Date(dateInput);
+  }
+  if (typeof dateInput === 'string') {
+    let parts = dateInput.trim().split('/');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+  }
+  return null;
+}
+
+function parseDateStringOnly(dateInput) {
+  if (!dateInput) return '';
+  if (dateInput instanceof Date) {
+    return Utilities.formatDate(dateInput, 'Asia/Jakarta', 'dd/MM/yyyy');
+  }
+  if (typeof dateInput === 'string') {
+    let parts = dateInput.trim().split(' ')[0].split('/');
+    if (parts.length === 3) {
+      return parts[0].padStart(2, '0') + '/' + parts[1].padStart(2, '0') + '/' + parts[2];
+    }
+  }
+  return '';
+}
+
+function getDriverPhonesMap() {
+  const phoneMap = {};
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
+    if (!sheet) return phoneMap;
+
+    const data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) return phoneMap;
+
+    const headers = data[0];
+    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
+    const phoneCol = findHeader(headers, CONFIG.MAP_PHONE_HEADERS);
+
+    if (driverCol === -1 || phoneCol === -1) return phoneMap;
+
+    for (let row = 1; row < data.length; row++) {
+      const rawDriver = normalizeText(data[row][driverCol]);
+      const cleanPhone = cleanPhoneNumber(data[row][phoneCol]);
+      if (rawDriver && cleanPhone) {
+        phoneMap[rawDriver] = cleanPhone;
+      }
+    }
+  } catch (err) {
+    Logger.log('Error getDriverPhonesMap: ' + err.message);
+  }
+  return phoneMap;
+}
+
+function getTaskDetailsByResiHybrid(fullResi, digitsOnly) {
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  
+  const mainSheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
+  const resiSheet = spreadsheet.getSheetByName(CONFIG.SHEET_RESI_NAME);
+
+  let foundTaskId = '-';
+  let mainSheetFound = false;
+  let mainDataObj = {};
+
+  if (mainSheet) {
+    const dataMain = mainSheet.getDataRange().getValues();
+    if (dataMain && dataMain.length >= 2) {
+      const headersMain = dataMain[0];
+      const resiCol = findHeader(headersMain, CONFIG.RESI_HEADERS);
+      const taskCol = findHeader(headersMain, CONFIG.TASK_HEADERS);
+      const driverCol = findHeader(headersMain, CONFIG.DRIVER_HEADERS);
+      const statusCol = findHeader(headersMain, CONFIG.STATUS_HEADERS);
+
+      if (resiCol !== -1) {
+        for (let row = 1; row < dataMain.length; row++) {
+          const valResi = normalizeText(dataMain[row][resiCol]);
+          if (valResi.includes(normalizeText(fullResi)) || (digitsOnly && valResi.includes(digitsOnly))) {
+            mainSheetFound = true;
+            foundTaskId = taskCol !== -1 ? String(dataMain[row][taskCol] || '-').trim() : '-';
+            mainDataObj = {
+              resi: String(dataMain[row][resiCol] || fullResi).trim(),
+              taskId: foundTaskId,
+              driver: driverCol !== -1 ? String(dataMain[row][driverCol] || '').trim() : '',
+              status: statusCol !== -1 ? String(dataMain[row][statusCol] || '').trim() : ''
+            };
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (resiSheet) {
+    const dataResi = resiSheet.getDataRange().getValues();
+    if (dataResi && dataResi.length >= 2) {
+      const headersResi = dataResi[0];
+      const resiCol = findHeader(headersResi, CONFIG.RESI_HEADERS);
+      const driverCol = findHeader(headersResi, CONFIG.DRIVER_HEADERS);
+      const statusCol = findHeader(headersResi, CONFIG.STATUS_HEADERS);
+      const districtCol = findHeader(headersResi, CONFIG.DISTRICT_HEADERS);
+      const priceCol = findHeader(headersResi, CONFIG.PRICE_HEADERS);
+
+      if (resiCol !== -1) {
+        for (let row = 1; row < dataResi.length; row++) {
+          const valResi = normalizeText(dataResi[row][resiCol]);
+          
+          if (valResi.includes(normalizeText(fullResi)) || (digitsOnly && valResi.includes(digitsOnly))) {
+            
+            let rawPrice = priceCol !== -1 ? dataResi[row][priceCol] : '';
+            let formattedPrice = '';
+            if (rawPrice !== '' && !isNaN(rawPrice)) {
+              formattedPrice = 'Rp ' + Number(rawPrice).toLocaleString('id-ID');
+            } else if (rawPrice) {
+              formattedPrice = String(rawPrice);
+            }
+
+            let driverVal = mainDataObj.driver || (driverCol !== -1 ? String(dataResi[row][driverCol] || '').trim() : '');
+            if (!driverVal || driverVal === '0') driverVal = 'Belum Ada Driver';
+
+            let statusVal = mainDataObj.status || (statusCol !== -1 ? String(dataResi[row][statusCol] || '').trim() : '-');
+
+            return {
+              found: true,
+              resi: String(dataResi[row][resiCol] || fullResi).trim(),
+              taskId: foundTaskId,
+              driver: driverVal,
+              status: statusVal,
+              district: districtCol !== -1 ? String(dataResi[row][districtCol] || '-').trim() : '-',
+              price: formattedPrice
+            };
+          }
+        }
+      }
+    }
+  }
+
+  if (mainSheetFound) {
+    let driverVal = mainDataObj.driver;
+    if (!driverVal || driverVal === '0') driverVal = 'Belum Ada Driver';
+
+    return {
+      found: true,
+      resi: mainDataObj.resi,
+      taskId: mainDataObj.taskId,
+      driver: driverVal,
+      status: mainDataObj.status || '-',
+      district: '-',
+      price: ''
+    };
+  }
+
+  return { found: false };
+}
+
+function getAllDriversActiveTasks() {
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
+
+  if (!sheet) return { success: false, message: 'Sheet task tidak ditemukan' };
+
+  const data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) return { success: false, message: 'Data spreadsheet kosong' };
+
+  const headers = data[0];
+  const driverColumn = findHeader(headers, CONFIG.DRIVER_HEADERS);
+  const taskColumn = findHeader(headers, CONFIG.TASK_HEADERS);
+  const statusColumn = findHeader(headers, CONFIG.STATUS_HEADERS);
+
+  if (driverColumn === -1 || taskColumn === -1) {
+    return { success: false, message: 'Kolom Driver atau Task ID tidak ditemukan' };
+  }
+
+  const driverMap = {};
+
+  for (let row = 1; row < data.length; row++) {
+    const rawDriver = String(data[row][driverColumn] || '').trim();
+    const taskId = String(data[row][taskColumn] || '').trim();
+    let statusValue = statusColumn !== -1 ? normalizeText(data[row][statusColumn]) : '';
+
+    if (rawDriver && taskId) {
+      const isAllowed = CONFIG.ALLOWED_STATUSES.some(allowed => statusValue === allowed || statusValue.includes(allowed));
+
+      if (isAllowed) {
+        if (!driverMap[rawDriver]) driverMap[rawDriver] = [];
+        if (!driverMap[rawDriver].includes(taskId)) driverMap[rawDriver].push(taskId);
+      }
+    }
+  }
+
+  return { success: true, data: driverMap };
+}
+
+function getDriverByPhoneNumber(phoneNumber) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_DRIVER_NAME);
+
+    if (!sheet) return { success: false, message: 'Sheet "Data Driver" tidak ditemukan' };
+
+    const data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) return { success: false, message: 'Data sheet "Data Driver" kosong' };
+
+    const headers = data[0];
+    const driverCol = findHeader(headers, CONFIG.MAP_DRIVER_HEADERS);
+    const phoneCol = findHeader(headers, CONFIG.MAP_PHONE_HEADERS);
+
+    if (driverCol === -1 || phoneCol === -1) return { success: false, message: 'Header kolom pada sheet Data Driver tidak sesuai' };
+
+    const cleanInputPhone = cleanPhoneNumber(phoneNumber);
+
+    for (let row = 1; row < data.length; row++) {
+      const currentPhone = cleanPhoneNumber(data[row][phoneCol]);
+      if (currentPhone && currentPhone === cleanInputPhone) {
+        return { success: true, driverName: String(data[row][driverCol]).trim() };
+      }
+    }
+
+    return { success: false, message: 'Nomor tidak terdaftar' };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function sendFonnteMessage(targetNumber, messageText) {
+  const url = 'https://api.fonnte.com/send';
+  const payload = { target: targetNumber, message: messageText };
+  const options = {
+    method: 'post',
+    headers: { 'Authorization': CONFIG.FONNTE_TOKEN },
+    payload: payload,
+    muteHttpExceptions: true
+  };
+
+  try {
+    UrlFetchApp.fetch(url, options);
+  } catch (err) {
+    Logger.log('Error Sending Fonnte Message: ' + err.message);
+  }
+}
+
+function getTasksByDriver(driverName) {
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sheet = CONFIG.SHEET_TASK_NAME ? spreadsheet.getSheetByName(CONFIG.SHEET_TASK_NAME) : spreadsheet.getSheets()[0];
+
+  if (!sheet) return { success: false, message: 'Sheet task tidak ditemukan' };
+
+  const data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) return { success: false, message: 'Data spreadsheet kosong' };
+
+  const headers = data[0];
+  const driverColumn = findHeader(headers, CONFIG.DRIVER_HEADERS);
+  const taskColumn = findHeader(headers, CONFIG.TASK_HEADERS);
+  const statusColumn = findHeader(headers, CONFIG.STATUS_HEADERS);
+
+  if (driverColumn === -1 || taskColumn === -1) {
+    return { success: false, message: 'Kolom Driver atau Task ID tidak ditemukan' };
+  }
+
+  const targetDriver = normalizeText(driverName);
+  const tasks = [];
+  let driverFound = false;
+
+  for (let row = 1; row < data.length; row++) {
+    const currentDriver = normalizeText(data[row][driverColumn]);
+    const taskId = String(data[row][taskColumn] || '').trim();
+    let statusValue = statusColumn !== -1 ? normalizeText(data[row][statusColumn]) : '';
+
+    if (currentDriver === targetDriver) {
+      driverFound = true;
+      const isAllowed = CONFIG.ALLOWED_STATUSES.some(allowed => statusValue === allowed || statusValue.includes(allowed));
+
+      if (taskId && isAllowed) {
+        if (!tasks.includes(taskId)) tasks.push(taskId);
+      }
+    }
+  }
+
+  return {
+    success: true,
+    driver: driverName,
+    driverFound: driverFound,
+    totalTask: tasks.length,
+    tasks: tasks
+  };
+}
+
+function findHeader(headers, allowedHeaders) {
+  for (let i = 0; i < headers.length; i++) {
+    const currentHeader = normalizeText(headers[i]);
+    for (let j = 0; j < allowedHeaders.length; j++) {
+      if (currentHeader === normalizeText(allowedHeaders[j])) return i;
+    }
+  }
+  return -1;
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[^\w\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function cleanPhoneNumber(phone) {
+  let cleaned = String(phone || '').replace(/\D/g, '');
+  if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);
+  return cleaned;
+}
+
+function jsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
