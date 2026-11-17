@@ -33,7 +33,7 @@
       position: fixed;
       top: -5%; left: -5%;
       width: 110%; height: 110%;
-      background-image: url('bg-hud.jpg');
+      background-image: url('bg-hud.jpg.jfif');
       background-size: cover;
       background-position: center;
       filter: hue-rotate(175deg) saturate(260%) brightness(0.75) contrast(1.15);
@@ -201,7 +201,7 @@
   <div class="container">
     <!-- Layer 3: Logo SPX Express di Tengah -->
     <div class="header">
-      <img src="Logo SPX.png" alt="SPX Express" class="center-logo">
+      <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
       <p>TURBO SCANNER // SPXID06 ONLY</p>
     </div>
 
@@ -269,7 +269,7 @@
     // Fungsi Otomatis Menghapus Background Putih pada Gambar Robot
     function renderTransparentRobot() {
       const img = new Image();
-      img.src = 'robot-spx.jpg';
+      img.src = 'robot-spx.jpg.jfif';
       img.onload = function() {
         const canvas = document.getElementById('robotCanvas');
         const ctx = canvas.getContext('2d');
