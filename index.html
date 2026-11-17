@@ -29,14 +29,14 @@
     html, body {
       width: 100%;
       height: 100dvh;
-      overflow: hidden; /* Terkunci 1 layar penuh HP tanpa scroll */
+      overflow: hidden;
       background-color: #07080a;
       color: var(--text-main);
       font-family: 'Rajdhani', sans-serif;
       user-select: none;
     }
 
-    /* Background Video HUD */
+    /* Background Video Asli */
     #bg-video {
       position: fixed;
       inset: 0;
@@ -56,7 +56,7 @@
       pointer-events: none;
     }
 
-    /* Container Utama 100dvh */
+    /* Container Utama 1 Layar Penuh Tanpa Scroll */
     .app-shell {
       position: relative;
       z-index: 2;
@@ -76,7 +76,7 @@
       align-items: center;
       justify-content: center;
       padding-top: 0px;
-      margin-top: 1px; /* Kompensasi ruang transparan atas GIF agar tampak tepat 6px dari atas */
+      margin-top: 1px;
       height: 100px;
       flex-shrink: 0;
       position: relative;
@@ -94,7 +94,8 @@
       height: 100px;
       object-fit: contain;
       cursor: pointer;
-      margin-right: -14px; /* Menempel presisi tepat di sebelah kiri huruf S */
+      margin-right: -34px;
+      mix-blend-mode: lighten;
       z-index: 3;
       filter: drop-shadow(0 0 10px rgba(255, 94, 0, 0.55));
       transition: transform 0.18s ease, filter 0.18s ease;
@@ -117,7 +118,7 @@
       .robot-trigger {
         width: 108px;
         height: 90px;
-        margin-right: -12px;
+        margin-right: -28px;
       }
       .spx-logo {
         width: 180px;
@@ -162,11 +163,11 @@
       outline: none;
     }
 
-    /* KAMERA SCANNER FLEKSIBEL OTOMATIS */
+    /* KAMERA SCANNER (Settingan Standar Stabil) */
     .scanner-wrapper {
       position: relative;
       width: 100%;
-      height: clamp(165px, 25dvh, 240px);
+      height: 210px;
       border-radius: 12px;
       overflow: hidden;
       border: 1.5px solid var(--spx-orange);
@@ -176,50 +177,14 @@
     }
 
     #reader {
-      width: 100% !important;
-      height: 100% !important;
+      width: 100%;
       border: none !important;
     }
 
     #reader video {
       width: 100% !important;
-      height: 100% !important;
+      height: 210px !important;
       object-fit: cover !important;
-    }
-
-    /* Sembunyikan UI bawaan html5-qrcode yang tidak perlu */
-    #reader__dashboard_section_csr span,
-    #reader__dashboard_section_swaplink,
-    #reader__header_message,
-    #reader img {
-      display: none !important;
-    }
-
-    /* Laser & Sudut Bidik HUD */
-    .hud-reticle {
-      position: absolute;
-      inset: 14% 10%;
-      border: 1px solid rgba(255, 102, 0, 0.35);
-      border-radius: 8px;
-      pointer-events: none;
-      z-index: 4;
-    }
-
-    .hud-reticle::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 50%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #ff5500, #ffcc00, #ff5500, transparent);
-      box-shadow: 0 0 10px #ff5500;
-      animation: laserSweep 2s ease-in-out infinite;
-    }
-
-    @keyframes laserSweep {
-      0%, 100% { transform: translateY(-28px); opacity: 0.7; }
-      50% { transform: translateY(28px); opacity: 1; }
     }
 
     /* Tombol Flash ON/OFF */
@@ -227,7 +192,7 @@
       position: absolute;
       top: 8px;
       right: 8px;
-      z-index: 6;
+      z-index: 10;
       background: rgba(15, 18, 24, 0.85);
       border: 1px solid var(--spx-orange);
       color: #fff;
@@ -293,10 +258,10 @@
       transform: scale(0.96);
     }
 
-    /* LOG TRANSMISI (Ukuran standar dipertahankan lega mengisi sisa ruang) */
+    /* LOG TRANSMISI */
     .log-card {
       flex: 1;
-      min-height: 150px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -456,7 +421,7 @@
   <div class="hud-overlay"></div>
 
   <div class="app-shell">
-    <!-- HEADER: Robot 120x100 menempel kiri huruf S Logo SPX 200x70 -->
+    <!-- HEADER -->
     <header class="header-bar">
       <div class="brand-lockup">
         <img
@@ -485,10 +450,9 @@
       </select>
     </section>
 
-    <!-- KAMERA SCANNER FLEKSIBEL OTOMATIS -->
+    <!-- KAMERA SCANNER -->
     <section class="scanner-wrapper">
       <div id="reader"></div>
-      <div class="hud-reticle"></div>
       <button type="button" id="flashToggleBtn" class="flash-btn">⚡ FLASH: OFF</button>
     </section>
 
@@ -527,7 +491,7 @@
     </section>
   </div>
 
-  <!-- MODAL KONFIRMASI ARSIP BERPASSWORD 1110 -->
+  <!-- MODAL KONFIRMASI ARSIP PASSWORD 1110 -->
   <div id="archiveModal" class="modal-backdrop">
     <div class="modal-box">
       <div class="modal-title">ARSIPKAN 32 SHEET KURIR</div>
@@ -552,17 +516,6 @@
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec";
 
-    const DEFAULT_COURIERS = [
-      "AAN SUPRIYATNA", "ADE IRMAWAN", "ADITYA PRATAMA", "AGUS SALIM",
-      "AHMAD FAUZI", "ANDI WIJAYA", "ANGGA PERMANA", "ARIF HIDAYAT",
-      "ASEP SAEPUDIN", "BAGUS SETIAWAN", "BAMBANG HERMANTO", "BUDI SANTOSO",
-      "CECEP SUPRIADI", "DANI RAMDANI", "DEDE SULAEMAN", "DENI KURNIAWAN",
-      "DIKI WAHYUDI", "DIMAS SAPUTRA", "EKO PRASETYO", "FAJAR SIDIK",
-      "FIRMANSYAH", "HENDRA GUNAWAN", "HERI SUSANTO", "ILHAM MAULANA",
-      "INDRA LESMANA", "IRFAN HAKIM", "JOKO SUSILO", "M. RIZKI",
-      "MUHAMMAD IQBAL", "NANDANG", "RENDI PRATAMA", "YUSUF MAULANA"
-    ];
-
     let html5QrCode = null;
     let isFlashOn = false;
     let totalSent = 0;
@@ -570,7 +523,7 @@
     let lastScanTime = 0;
     const recentSessionScans = new Set();
 
-    // Audio Beep Web Audio API (Volume Maksimal & Jelas)
+    // Audio Beep Web Audio API (Volume Maksimal)
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function playBeep(type = "success") {
@@ -618,17 +571,13 @@
       `;
       logList.prepend(item);
 
-      // Batasi maksimal 40 item log di memori HP agar tetap ringan
       while (logList.children.length > 40) {
         logList.removeChild(logList.lastChild);
       }
     }
 
-    // Muat daftar 32 kurir dari Spreadsheet (fallback ke list lokal)
+    // Muat daftar 32 kurir dari Spreadsheet
     async function loadCourierList() {
-      const select = document.getElementById("courierSelect");
-      populateSelect(DEFAULT_COURIERS);
-
       try {
         const res = await fetch(APPS_SCRIPT_URL);
         const data = await res.json();
@@ -636,7 +585,7 @@
           populateSelect(data.couriers);
         }
       } catch (err) {
-        console.warn("Menggunakan daftar kurir cadangan lokal:", err);
+        addLog("Gagal Memuat Kurir", "Periksa koneksi internet Anda", "error", "NET ERR");
       }
     }
 
@@ -712,39 +661,31 @@
       }
     }
 
-    // Inisialisasi Kamera Scanner Fleksibel
-    async function startCameraScanner() {
+    // Inisialisasi Kamera Scanner (Settingan Standar Sebelumnya)
+    function startCameraScanner() {
       html5QrCode = new Html5QrCode("reader");
 
       const config = {
-        fps: 18,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          return {
-            width: Math.floor(viewfinderWidth * 0.78),
-            height: Math.floor(viewfinderHeight * 0.56)
-          };
-        },
-        aspectRatio: 1.5
+        fps: 15,
+        qrbox: { width: 220, height: 110 }
       };
 
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            const now = Date.now();
-            if (decodedText === lastScannedCode && now - lastScanTime < 1800) {
-              return;
-            }
-            lastScannedCode = decodedText;
-            lastScanTime = now;
-            processWaybill(decodedText);
-          },
-          () => {}
-        );
-      } catch (err) {
-        addLog("Kamera Tidak Aktif", "Izinkan akses kamera browser atau gunakan input manual", "error", "CAM ERR");
-      }
+      html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+          const now = Date.now();
+          if (decodedText === lastScannedCode && now - lastScanTime < 1800) {
+            return;
+          }
+          lastScannedCode = decodedText;
+          lastScanTime = now;
+          processWaybill(decodedText);
+        },
+        () => {}
+      ).catch(err => {
+        addLog("Kamera Tidak Aktif", "Pastikan izin kamera browser aktif atau gunakan input manual", "error", "CAM ERR");
+      });
     }
 
     // Kontrol Tombol Flash ON/OFF
@@ -833,7 +774,6 @@
       }
     });
 
-    // Jalankan saat halaman dibuka
     window.addEventListener("DOMContentLoaded", () => {
       loadCourierList();
       startCameraScanner();
