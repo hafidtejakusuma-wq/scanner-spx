@@ -1,835 +1,842 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>SPX Express Turbo Scanner</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SPX Express Scanner</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #070402;
-      --bg-card: rgba(18, 11, 7, 0.84);
-      --orange-neon: #ff5500;
-      --orange-bright: #ff8c00;
-      --orange-glow: rgba(255, 85, 0, 0.45);
-      --orange-dim: rgba(255, 85, 0, 0.14);
-      --green-neon: #10b981;
-      --yellow-neon: #f59e0b;
-      --red-neon: #ef4444;
-      --text-main: #f4f4f5;
-      --text-sub: #d4d4d8;
-      --border-color: rgba(255, 107, 0, 0.35);
+      --spx-orange: #ff5500;
+      --spx-orange-glow: rgba(255, 85, 0, 0.55);
+      --spx-amber: #ff9900;
+      --hud-bg: rgba(12, 14, 18, 0.82);
+      --hud-border: rgba(255, 102, 0, 0.45);
+      --text-main: #ffffff;
+      --text-muted: #b8c0cc;
+      --success-green: #00e676;
+      --error-red: #ff3d00;
     }
 
-    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-    
-    body { 
-      margin: 0; padding: 16px; 
-      background: var(--bg-dark); 
-      color: var(--text-main); 
-      overflow-x: hidden;
-      min-height: 100vh;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    /* =========================================================
-       1. VIDEO BACKGROUND HUD ASLI (bg-hud.mp4.mp4) BERWARNA ORANGE
-       ========================================================= */
-    .bg-video-layer {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      object-fit: cover;
-      filter: hue-rotate(175deg) saturate(280%) brightness(0.8) contrast(1.18);
-      z-index: -2;
-      pointer-events: none;
+    html, body {
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden; /* Terkunci 1 layar penuh HP tanpa scroll */
+      background-color: #07080a;
+      color: var(--text-main);
+      font-family: 'Rajdhani', sans-serif;
+      user-select: none;
     }
 
-    .bg-hud-overlay {
+    /* Background Video HUD */
+    #bg-video {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.3) 0%, rgba(5, 3, 2, 0.8) 100%);
-      z-index: -1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      opacity: 0.48;
       pointer-events: none;
     }
 
-    /* =========================================================
-       2. MASKOT ROBOT GIF POJOK KIRI ATAS (mix-blend-mode: screen)
-       ========================================================= */
-    .robot-mascot {
+    .hud-overlay {
       position: fixed;
-      top: 8px;
-      left: 8px;
-      width: 90px;
-      height: auto;
-      z-index: 999;
+      inset: 0;
+      background: radial-gradient(circle at 50% 20%, rgba(255, 85, 0, 0.14), rgba(5, 6, 9, 0.86));
+      z-index: 1;
       pointer-events: none;
-      /* Menghilangkan background hitam pekat menjadi transparan menyatu dengan HUD */
-      mix-blend-mode: screen;
-      filter: drop-shadow(0 6px 14px rgba(255, 85, 0, 0.55));
-      animation: robotFloat 3.2s ease-in-out infinite;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .robot-mascot.robot-happy {
-      animation: robotCheer 0.55s ease;
     }
 
-    @keyframes robotFloat {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50%      { transform: translateY(-7px) rotate(2.5deg); }
-    }
-    @keyframes robotCheer {
-      0%   { transform: scale(1) translateY(0); }
-      35%  { transform: scale(1.16) translateY(-10px) rotate(6deg); }
-      70%  { transform: scale(0.96) translateY(2px) rotate(-3deg); }
-      100% { transform: scale(1) translateY(0); }
-    }
-
-    /* =========================================================
-       3. LAYOUT & LOGO TENGAH
-       ========================================================= */
-    .container { max-width: 480px; margin: 0 auto; position: relative; z-index: 1; }
-    
-    .header { 
-      text-align: center; 
-      margin-top: 10px;
-      margin-bottom: 18px; 
+    /* Container Utama 100dvh */
+    .app-shell {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      height: 100dvh;
+      margin: 0 auto;
+      padding: 0 12px 10px 12px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .center-logo {
-      width: 170px;
-      max-width: 58%;
-      height: auto;
-      display: block;
-      margin: 0 auto 6px auto;
-      filter: drop-shadow(0 0 14px rgba(255, 85, 0, 0.7));
-      transition: transform 0.3s ease;
-    }
-    .header p { 
-      margin: 2px 0 0; font-size: 11px; font-weight: 700;
-      color: var(--orange-bright); letter-spacing: 1.6px; 
-      text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+      gap: 7px;
     }
 
-    /* Kartu Glassmorphism */
-    .card { 
-      background: var(--bg-card); 
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 16px; padding: 16px; margin-bottom: 14px; 
-      border: 1px solid var(--border-color);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 0 15px rgba(255, 85, 0, 0.06);
-      position: relative; overflow: hidden;
-      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
-    }
-    .card::before {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--orange-neon), transparent);
-    }
-
-    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-    
-    select, input[type="text"] {
-      width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.88); color: var(--text-main); font-size: 15px; font-weight: 600;
-      outline: none; transition: all 0.25s ease;
-    }
-    select:focus, input[type="text"]:focus { 
-      border-color: var(--orange-neon); 
-      box-shadow: 0 0 0 3px var(--orange-dim); 
-    }
-    select.select-empty {
-      color: var(--orange-bright);
-      border-color: rgba(255, 140, 0, 0.6);
-    }
-
-    /* =========================================================
-       4. SKELETON SCREEN (SAAT MEMUAT DAFTAR KURIR)
-       ========================================================= */
-    .skeleton-box {
-      width: 100%;
-      height: 46px;
-      border-radius: 12px;
-      background: linear-gradient(
-        110deg,
-        rgba(35, 22, 14, 0.9) 25%,
-        rgba(255, 95, 0, 0.25) 50%,
-        rgba(35, 22, 14, 0.9) 75%
-      );
-      background-size: 200% 100%;
-      border: 1px solid rgba(255, 107, 0, 0.25);
-      animation: skeletonShimmer 1.3s infinite linear;
+    /* HEADER: Kepala robot tampak 6px dari tepi atas, menempel kiri huruf S Logo SPX */
+    .header-bar {
       display: flex;
       align-items: center;
-      padding: 0 14px;
-      font-size: 12px;
-      color: rgba(255, 160, 80, 0.75);
-      letter-spacing: 0.8px;
-    }
-    @keyframes skeletonShimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
+      justify-content: center;
+      padding-top: 0px;
+      margin-top: 1px; /* Kompensasi ruang transparan atas GIF agar tampak tepat 6px dari atas */
+      height: 100px;
+      flex-shrink: 0;
+      position: relative;
     }
 
-    .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-    .checkbox-row input { width: 18px; height: 18px; accent-color: var(--orange-neon); cursor: pointer; }
-    .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
-
-    /* =========================================================
-       5. KAMERA & MICRO ANIMATIONS (CORNER BRACKETS + BUTTONS)
-       ========================================================= */
-    #reader-wrapper { 
-      position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
-      background: #000; min-height: 240px; border: 1px solid var(--border-color);
-      transition: all 0.25s ease;
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
     }
-    #reader { width: 100%; }
 
-    .cam-corners {
+    .robot-trigger {
+      width: 120px;
+      height: 100px;
+      object-fit: contain;
+      cursor: pointer;
+      margin-right: -14px; /* Menempel presisi tepat di sebelah kiri huruf S */
+      z-index: 3;
+      filter: drop-shadow(0 0 10px rgba(255, 94, 0, 0.55));
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    .robot-trigger:active {
+      transform: scale(0.93);
+      filter: drop-shadow(0 0 16px rgba(255, 170, 0, 0.95));
+    }
+
+    .spx-logo {
+      width: 200px;
+      height: 70px;
+      object-fit: contain;
+      z-index: 2;
+      filter: drop-shadow(0 2px 10px rgba(255, 85, 0, 0.4));
+    }
+
+    @media (max-width: 350px) {
+      .robot-trigger {
+        width: 108px;
+        height: 90px;
+        margin-right: -12px;
+      }
+      .spx-logo {
+        width: 180px;
+        height: 63px;
+      }
+    }
+
+    /* PANEL HUD */
+    .hud-card {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), inset 0 0 12px rgba(255, 85, 0, 0.08);
+    }
+
+    .section-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      color: var(--spx-amber);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* TARGET KURIR */
+    .courier-select {
+      width: 100%;
+      height: 36px;
+      background: rgba(20, 24, 32, 0.95);
+      border: 1px solid var(--spx-orange);
+      border-radius: 8px;
+      color: #ffffff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 0 10px;
+      outline: none;
+    }
+
+    /* KAMERA SCANNER FLEKSIBEL OTOMATIS */
+    .scanner-wrapper {
+      position: relative;
+      width: 100%;
+      height: clamp(165px, 25dvh, 240px);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1.5px solid var(--spx-orange);
+      background: #050608;
+      box-shadow: 0 0 16px rgba(255, 85, 0, 0.25);
+      flex-shrink: 0;
+    }
+
+    #reader {
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+    }
+
+    #reader video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+
+    /* Sembunyikan UI bawaan html5-qrcode yang tidak perlu */
+    #reader__dashboard_section_csr span,
+    #reader__dashboard_section_swaplink,
+    #reader__header_message,
+    #reader img {
+      display: none !important;
+    }
+
+    /* Laser & Sudut Bidik HUD */
+    .hud-reticle {
       position: absolute;
-      inset: 12px;
+      inset: 14% 10%;
+      border: 1px solid rgba(255, 102, 0, 0.35);
+      border-radius: 8px;
       pointer-events: none;
-      z-index: 10;
-      opacity: 0.35;
-      transition: opacity 0.3s ease;
+      z-index: 4;
     }
-    .cam-active .cam-corners {
-      opacity: 1;
-      animation: cornerPulse 1.8s ease-in-out infinite;
-    }
-    .cam-corners span {
+
+    .hud-reticle::before {
+      content: "";
       position: absolute;
-      width: 22px; height: 22px;
-      border-color: var(--orange-neon);
-      border-style: solid;
-    }
-    .cam-corners span:nth-child(1) { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
-    .cam-corners span:nth-child(2) { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
-    .cam-corners span:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
-    .cam-corners span:nth-child(4) { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
-
-    @keyframes cornerPulse {
-      0%, 100% { transform: scale(1); }
-      50%      { transform: scale(0.97); }
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ff5500, #ffcc00, #ff5500, transparent);
+      box-shadow: 0 0 10px #ff5500;
+      animation: laserSweep 2s ease-in-out infinite;
     }
 
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-    button {
-      padding: 13px 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700;
-      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; 
-      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease;
-      text-transform: uppercase; letter-spacing: 0.5px;
-      position: relative; overflow: hidden;
+    @keyframes laserSweep {
+      0%, 100% { transform: translateY(-28px); opacity: 0.7; }
+      50% { transform: translateY(28px); opacity: 1; }
     }
-    button:active:not(:disabled) { transform: scale(0.94); }
-    button:disabled { opacity: 0.38; cursor: not-allowed; }
 
-    .btn-cam-start { background: linear-gradient(135deg, #ff7b00, #ff3d00); color: #fff; box-shadow: 0 4px 15px var(--orange-glow); }
-    .btn-cam-stop { background: rgba(0, 0, 0, 0.65); color: var(--orange-bright); border: 1px solid var(--orange-neon); }
-    .btn-torch-off { background: rgba(20, 20, 22, 0.9); color: var(--text-sub); border: 1px solid var(--border-color); }
-    .btn-torch-on { background: #fff; color: #000; box-shadow: 0 0 18px rgba(255, 255, 255, 0.8); }
-    .btn-manual { background: var(--orange-dim); color: var(--orange-bright); width: 100%; margin-top: 10px; border: 1px solid var(--orange-neon); }
-    .btn-manual:hover:not(:disabled) { background: rgba(255, 85, 0, 0.25); }
+    /* Tombol Flash ON/OFF */
+    .flash-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 6;
+      background: rgba(15, 18, 24, 0.85);
+      border: 1px solid var(--spx-orange);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
 
-    /* =========================================================
-       6. VISUAL FEEDBACK (KILATAN WARNA & GETAR SHAKE)
-       ========================================================= */
-    .flash-overlay {
+    .flash-btn.active {
+      background: var(--spx-orange);
+      color: #000;
+      box-shadow: 0 0 12px var(--spx-orange);
+    }
+
+    /* INPUT MANUAL */
+    .manual-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .manual-input {
+      flex: 1;
+      height: 36px;
+      background: rgba(20, 24, 32, 0.95);
+      border: 1px solid rgba(255, 102, 0, 0.5);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 0 10px;
+      text-transform: uppercase;
+      outline: none;
+    }
+
+    .manual-input:focus {
+      border-color: var(--spx-amber);
+      box-shadow: 0 0 8px rgba(255, 153, 0, 0.35);
+    }
+
+    .btn-send {
+      height: 36px;
+      padding: 0 14px;
+      background: linear-gradient(135deg, #ff5500, #ff8800);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 85, 0, 0.45);
+    }
+
+    .btn-send:active {
+      transform: scale(0.96);
+    }
+
+    /* LOG TRANSMISI (Ukuran standar dipertahankan lega mengisi sisa ruang) */
+    .log-card {
+      flex: 1;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .log-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding-right: 2px;
+    }
+
+    .log-list::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .log-list::-webkit-scrollbar-thumb {
+      background: var(--spx-orange);
+      border-radius: 4px;
+    }
+
+    .log-item {
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid var(--spx-orange);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeSlide 0.2s ease;
+    }
+
+    .log-item.success { border-left-color: var(--success-green); }
+    .log-item.error { border-left-color: var(--error-red); }
+    .log-item.warning { border-left-color: var(--spx-amber); }
+
+    .log-resi {
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.4px;
+    }
+
+    .log-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .log-badge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 85, 0, 0.2);
+      color: var(--spx-amber);
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* MODAL KONFIRMASI ARSIP PASSWORD 1110 */
+    .modal-backdrop {
       position: fixed;
       inset: 0;
-      pointer-events: none;
-      z-index: 998;
-      opacity: 0;
-    }
-    .flash-success { animation: flashGreen 0.45s ease-out; }
-    .flash-duplicate { animation: flashYellow 0.5s ease-out; }
-    .flash-error { animation: flashRed 0.5s ease-out; }
-
-    @keyframes flashGreen {
-      0%   { opacity: 0.38; background: radial-gradient(circle, transparent 35%, rgba(16, 185, 129, 0.75) 100%); }
-      100% { opacity: 0; }
-    }
-    @keyframes flashYellow {
-      0%   { opacity: 0.42; background: radial-gradient(circle, transparent 35%, rgba(245, 158, 11, 0.8) 100%); }
-      100% { opacity: 0; }
-    }
-    @keyframes flashRed {
-      0%   { opacity: 0.45; background: radial-gradient(circle, transparent 35%, rgba(239, 68, 68, 0.85) 100%); }
-      100% { opacity: 0; }
-    }
-
-    .shake-anim {
-      animation: horizontalShake 0.42s cubic-bezier(.36,.07,.19,.97) both;
-      border-color: var(--red-neon) !important;
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
-    }
-    .pulse-success-card {
-      border-color: var(--green-neon) !important;
-      box-shadow: 0 0 22px rgba(16, 185, 129, 0.5) !important;
-    }
-
-    @keyframes horizontalShake {
-      10%, 90% { transform: translate3d(-3px, 0, 0); }
-      20%, 80% { transform: translate3d(5px, 0, 0); }
-      30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
-      40%, 60% { transform: translate3d(7px, 0, 0); }
-    }
-
-    /* Bar Status Antrean Sinkronisasi */
-    .sync-bar {
-      display: flex; justify-content: space-between; align-items: center;
-      background: rgba(0, 0, 0, 0.85); border: 1px solid var(--border-color); border-radius: 10px;
-      padding: 10px 14px; margin-bottom: 14px; font-size: 12px;
+      background: rgba(0, 0, 0, 0.82);
       backdrop-filter: blur(6px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
     }
-    .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #10b981; }
-    .sync-dot.busy { background: #ff6b00; animation: pulse 0.8s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-    #statusBox {
-      display: none; padding: 12px; border-radius: 12px; margin-bottom: 14px;
-      font-size: 13px; font-weight: 700; text-align: center;
-      backdrop-filter: blur(6px);
-      animation: statusPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .modal-backdrop.open {
+      display: flex;
     }
-    @keyframes statusPop {
-      0%   { transform: scale(0.92); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .status-success { display: block !important; background: rgba(16, 185, 129, 0.22); border: 1px solid #10b981; color: #34d399; }
-    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
-    .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
 
-    /* Riwayat & Micro Animation Slide-In */
-    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .badge { background: var(--orange-neon); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; transition: transform 0.2s ease; }
-    .badge.pop { transform: scale(1.22); }
-    .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-    
-    .history-item {
-      background: rgba(0, 0, 0, 0.82); padding: 10px 14px; border-radius: 10px; 
-      border-left: 3px solid #f59e0b;
-      display: flex; justify-content: space-between; align-items: center; font-size: 13px;
-      animation: slideInItem 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    .modal-box {
+      width: 100%;
+      max-width: 340px;
+      background: #10131a;
+      border: 1.5px solid var(--spx-orange);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 0 28px rgba(255, 85, 0, 0.45);
+      text-align: center;
     }
-    @keyframes slideInItem {
-      0%   { opacity: 0; transform: translateY(-12px) scale(0.97); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
+
+    .modal-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      color: var(--spx-amber);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
     }
-    .history-item.synced { border-left-color: #10b981; }
-    .history-item.dup { border-left-color: #ef4444; opacity: 0.72; }
-    .history-resi { font-weight: 700; color: #fff; font-family: monospace; font-size: 14px; }
-    .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
-    .tag-status { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
-    .tag-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-    .tag-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-    .tag-dup { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    .modal-desc {
+      font-size: 13.5px;
+      color: #d0d7e2;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .modal-pass-input {
+      width: 100%;
+      height: 40px;
+      background: #07090d;
+      border: 1px solid var(--spx-orange);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      text-align: center;
+      letter-spacing: 4px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-cancel, .btn-confirm {
+      flex: 1;
+      height: 38px;
+      border-radius: 8px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-cancel {
+      background: #232834;
+      color: #cbd5e1;
+    }
+
+    .btn-confirm {
+      background: linear-gradient(135deg, #ff5500, #ff8800);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 85, 0, 0.5);
+    }
   </style>
 </head>
 <body>
-  <!-- Video Background HUD Asli (bg-hud.mp4.mp4) Berwarna Orange -->
-  <video class="bg-video-layer" autoplay loop muted playsinline>
-    <source src="bg-hud.mp4.mp4" type="video/mp4">
+
+  <!-- Background Video Asli -->
+  <video id="bg-video" autoplay loop muted playsinline>
+    <source src="bg-hud.mp4.mp4" type="video/mp4" />
   </video>
-  <div class="bg-hud-overlay"></div>
+  <div class="hud-overlay"></div>
 
-  <!-- Layer Kilatan Visual Feedback -->
-  <div id="flashOverlay" class="flash-overlay"></div>
-
-  <!-- Maskot Robot GIF Pojok Kiri Atas (robot-spx.gif.gif) -->
-  <img src="robot-spx.gif.gif" alt="SPX Robot" id="robotMascot" class="robot-mascot">
-
-  <div class="container">
-    <!-- Logo SPX Express di Tengah -->
-    <div class="header">
-      <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
-      <p>TURBO SCANNER // SPXID06 ONLY</p>
-    </div>
-
-    <!-- Kartu Pemilihan Kurir dengan Skeleton Screen -->
-    <div class="card" id="kurirCard">
-      <label for="kurirSelect">Target Database (Kurir)</label>
-      
-      <!-- Skeleton Screen saat loading -->
-      <div id="kurirSkeleton" class="skeleton-box">
-        MENGHUBUNGKAN DATABASE KURIR...
+  <div class="app-shell">
+    <!-- HEADER: Robot 120x100 menempel kiri huruf S Logo SPX 200x70 -->
+    <header class="header-bar">
+      <div class="brand-lockup">
+        <img
+          src="robot-spx.gif.gif"
+          alt="SPX Robot Arsip"
+          class="robot-trigger"
+          id="robotArchiveBtn"
+          title="Klik untuk Arsip & Reset 32 Sheet Kurir"
+        />
+        <img
+          src="Logo%20SPX.png"
+          alt="SPX Express"
+          class="spx-logo"
+        />
       </div>
+    </header>
 
-      <!-- Dropdown Kurir (Tersembunyi sampai data siap) -->
-      <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
-        <option value="">-- PILIH NAMA KURIR --</option>
+    <!-- PILIH KURIR -->
+    <section class="hud-card">
+      <div class="section-label">
+        <span>TARGET KURIR (32 SHEET)</span>
+        <span id="scanCounter">TERKIRIM: 0</span>
+      </div>
+      <select id="courierSelect" class="courier-select">
+        <option value="">-- MEMUAT DAFTAR KURIR... --</option>
       </select>
+    </section>
 
-      <div class="checkbox-row">
-        <input type="checkbox" id="cekDuplikat" checked>
-        <label for="cekDuplikat">Blokir duplikasi resi otomatis</label>
+    <!-- KAMERA SCANNER FLEKSIBEL OTOMATIS -->
+    <section class="scanner-wrapper">
+      <div id="reader"></div>
+      <div class="hud-reticle"></div>
+      <button type="button" id="flashToggleBtn" class="flash-btn">⚡ FLASH: OFF</button>
+    </section>
+
+    <!-- INPUT RESI MANUAL -->
+    <section class="hud-card">
+      <div class="section-label">
+        <span>INPUT MANUAL (AWALAN SPXID06 / ID)</span>
       </div>
-    </div>
+      <div class="manual-row">
+        <input
+          type="text"
+          id="manualResiInput"
+          class="manual-input"
+          placeholder="Ketik / Paste SPXID06... atau ID..."
+          autocomplete="off"
+        />
+        <button type="button" id="manualSubmitBtn" class="btn-send">KIRIM</button>
+      </div>
+    </section>
 
-    <!-- Indikator Antrean Real-Time -->
-    <div class="sync-bar">
-      <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
-      <div style="color:var(--orange-bright); font-weight:700;" id="queueCount">Antrean: 0</div>
-    </div>
-
-    <div id="statusBox"></div>
-
-    <!-- Kartu Kamera Scanner -->
-    <div class="card" id="scannerCard">
-      <div id="reader-wrapper">
-        <div class="cam-corners">
-          <span></span><span></span><span></span><span></span>
+    <!-- LOG TRANSMISI -->
+    <section class="hud-card log-card">
+      <div class="section-label">
+        <span>LOG TRANSMISI REAL-TIME</span>
+        <span id="connStatus" style="color: #00e676;">● ONLINE</span>
+      </div>
+      <div id="logList" class="log-list">
+        <div class="log-item">
+          <div>
+            <div class="log-resi">Sistem Siap Memindai</div>
+            <div class="log-meta">Mendukung resi awalan SPXID06 & ID</div>
+          </div>
+          <span class="log-badge">READY</span>
         </div>
-        <div id="reader"></div>
       </div>
-      <div class="btn-group">
-        <button id="btnKamera" class="btn-cam-start" onclick="toggleKamera()">📷 ACTIVATE CAM</button>
-        <button id="btnSenter" class="btn-torch-off" onclick="toggleSenter()" disabled>🔦 ILLUMINATE</button>
-      </div>
-    </div>
+    </section>
+  </div>
 
-    <!-- Kartu Input Manual -->
-    <div class="card">
-      <label for="manualInput">Manual Override (Wajib SPXID06)</label>
-      <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789...">
-      <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
-    </div>
-
-    <!-- Kartu Riwayat Transmisi -->
-    <div class="card">
-      <div class="history-header">
-        <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
-        <span class="badge" id="scanCounter">0 SCAN</span>
-      </div>
-      <div class="history-list" id="historyList">
-        <div style="text-align:center; color:var(--text-sub); font-size:12px; padding:18px; opacity:0.6;">NO DATA RECORDED</div>
+  <!-- MODAL KONFIRMASI ARSIP BERPASSWORD 1110 -->
+  <div id="archiveModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">ARSIPKAN 32 SHEET KURIR</div>
+      <p class="modal-desc">
+        Seluruh data dari <strong>32 sheet kurir (urut A–Z)</strong> akan dipindahkan ke sheet <strong>Resi History</strong> dan dikosongkan. Masukkan password konfirmasi:
+      </p>
+      <input
+        type="password"
+        id="archivePasswordInput"
+        class="modal-pass-input"
+        inputmode="numeric"
+        maxlength="10"
+        placeholder="••••"
+      />
+      <div class="modal-actions">
+        <button type="button" id="cancelArchiveBtn" class="btn-cancel">BATAL</button>
+        <button type="button" id="confirmArchiveBtn" class="btn-confirm">ARSIPKAN</button>
       </div>
     </div>
   </div>
 
   <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec";
 
-    // Daftar Whitelist 32 Nama Kurir Resmi (Terurut Abjad A-Z)
-    const WHITELIST_KURIR = [
-      'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
-      'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
-      'SAHRUL ANAM', 'KHAIRUDDIN', 'HAMDANI', 'NURUL ANWAR',
-      'MASRUDI', 'ABD MAJID', 'SUMARI', 'WASIS BUDIONO',
-      'ARMAN SUSIANTO', 'ABDURRAHMAN', 'MOH SAHRIL', 'DWI AGUSTIONO',
-      'MIFTAHUL GHANI', 'IRVAN FAUZY', 'MUHAMMAD AINUS SYAMSI',
-      'MUHAMMAD NURULLAH AJI SAPUTRA', 'MOHAMMAD HARIS', 'SANDI AGUSTINO',
-      'EDY MUCHLAS', 'MOH. MAULANA TAQWIM', 'ABD MUTHALIB',
-      'MOH. TRIOWAN KURNIA', 'AMIRIL MUKMININ'
-    ].sort((a, b) => a.localeCompare(b, 'id'));
+    const DEFAULT_COURIERS = [
+      "AAN SUPRIYATNA", "ADE IRMAWAN", "ADITYA PRATAMA", "AGUS SALIM",
+      "AHMAD FAUZI", "ANDI WIJAYA", "ANGGA PERMANA", "ARIF HIDAYAT",
+      "ASEP SAEPUDIN", "BAGUS SETIAWAN", "BAMBANG HERMANTO", "BUDI SANTOSO",
+      "CECEP SUPRIADI", "DANI RAMDANI", "DEDE SULAEMAN", "DENI KURNIAWAN",
+      "DIKI WAHYUDI", "DIMAS SAPUTRA", "EKO PRASETYO", "FAJAR SIDIK",
+      "FIRMANSYAH", "HENDRA GUNAWAN", "HERI SUSANTO", "ILHAM MAULANA",
+      "INDRA LESMANA", "IRFAN HAKIM", "JOKO SUSILO", "M. RIZKI",
+      "MUHAMMAD IQBAL", "NANDANG", "RENDI PRATAMA", "YUSUF MAULANA"
+    ];
 
     let html5QrCode = null;
-    let isScanning = false;
-    let isTorchOn = false;
-    let lastScannedCode = '';
-    let lastScannedTime = 0;
-    let totalScan = 0;
-    let audioCtx = null;
+    let isFlashOn = false;
+    let totalSent = 0;
+    let lastScannedCode = "";
+    let lastScanTime = 0;
+    const recentSessionScans = new Set();
 
-    const localCache = new Set();
-    let uploadQueue = [];
-    let isSyncing = false;
+    // Audio Beep Web Audio API (Volume Maksimal & Jelas)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    function initAudio() {
-      if (!audioCtx) {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) audioCtx = new AudioContextClass();
-      }
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    }
+    function playBeep(type = "success") {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
 
-    // Visual Feedback Helper (Kilatan Layar, Getar Shake, & Reaksi Robot)
-    function triggerVisualFeedback(type, targetCardId) {
-      const flash = document.getElementById('flashOverlay');
-      flash.className = 'flash-overlay';
-      void flash.offsetWidth;
-      flash.classList.add('flash-' + type);
-
-      if (type === 'success') {
-        const robot = document.getElementById('robotMascot');
-        robot.classList.remove('robot-happy');
-        void robot.offsetWidth;
-        robot.classList.add('robot-happy');
-
-        const scanCard = document.getElementById('scannerCard');
-        scanCard.classList.add('pulse-success-card');
-        setTimeout(() => scanCard.classList.remove('pulse-success-card'), 450);
+      if (type === "success") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1450, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1950, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.16);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.16);
       } else {
-        const card = document.getElementById(targetCardId || 'scannerCard');
-        card.classList.remove('shake-anim');
-        void card.offsetWidth;
-        card.classList.add('shake-anim');
-        setTimeout(() => card.classList.remove('shake-anim'), 450);
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(280, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.9, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.28);
       }
     }
 
-    function onKurirChange() {
-      const select = document.getElementById('kurirSelect');
-      if (select.value) {
-        select.classList.remove('select-empty');
-        document.getElementById('statusBox').style.display = 'none';
-      } else {
-        select.classList.add('select-empty');
-      }
+    // Validasi Awalan Resi: SPXID06 atau ID
+    function isValidResiFormat(code) {
+      const clean = code.trim().toUpperCase();
+      return (clean.startsWith("SPXID06") || clean.startsWith("ID")) && clean.length >= 6;
     }
 
-    window.onload = async function() {
-      html5QrCode = new Html5Qrcode("reader");
-
-      const bgVid = document.querySelector('.bg-video-layer');
-      if (bgVid) {
-        bgVid.play().catch(() => {});
-      }
-      
-      const skeleton = document.getElementById('kurirSkeleton');
-      const select = document.getElementById('kurirSelect');
-
-      try {
-        const response = await fetch(WEB_APP_URL);
-        const res = await response.json();
-
-        let daftarKurir = [];
-        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-          const allowedSet = new Set(WHITELIST_KURIR.map(n => n.toUpperCase()));
-          daftarKurir = res.data
-            .map(n => String(n).trim())
-            .filter(n => allowedSet.has(n.toUpperCase()))
-            .sort((a, b) => a.localeCompare(b, 'id'));
-        }
-
-        if (daftarKurir.length === 0) daftarKurir = WHITELIST_KURIR;
-
-        select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
-        daftarKurir.forEach(function(kurir) {
-          const opt = document.createElement('option');
-          opt.value = kurir;
-          opt.textContent = kurir;
-          select.appendChild(opt);
-        });
-
-      } catch (err) {
-        select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
-        WHITELIST_KURIR.forEach(function(kurir) {
-          const opt = document.createElement('option');
-          opt.value = kurir;
-          opt.textContent = kurir;
-          select.appendChild(opt);
-        });
-      } finally {
-        skeleton.style.display = 'none';
-        select.style.display = 'block';
-      }
-
-      setInterval(prosesAntreanBatch, 2500);
-    };
-
-    async function toggleKamera() {
-      initAudio();
-      const kurir = document.getElementById('kurirSelect').value;
-
-      if (!isScanning && !kurir) {
-        suaraErrorKeras();
-        if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
-        triggerVisualFeedback('error', 'kurirCard');
-        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
-        document.getElementById('kurirSelect').focus();
-        return;
-      }
-
-      const btnCam = document.getElementById('btnKamera');
-      const btnTorch = document.getElementById('btnSenter');
-      const wrapper = document.getElementById('reader-wrapper');
-
-      if (!isScanning) {
-        try {
-          await html5QrCode.start(
-            { facingMode: "environment" },
-            {
-              fps: 20,
-              aspectRatio: 1.333334,
-              qrbox: function(viewfinderWidth, viewfinderHeight) {
-                return {
-                  width: Math.floor(viewfinderWidth * 0.96),
-                  height: Math.floor(viewfinderHeight * 0.96)
-                };
-              }
-            },
-            onScanSuccess,
-            () => {}
-          );
-          isScanning = true;
-          wrapper.classList.add('cam-active');
-          btnCam.textContent = '⏹ DEACTIVATE CAM';
-          btnCam.className = 'btn-cam-stop';
-          btnTorch.disabled = false;
-          document.getElementById('statusBox').style.display = 'none';
-        } catch (err) {
-          tampilkanStatus('error', 'CAMERA ACCESS DENIED: ' + err);
-        }
-      } else {
-        if (isTorchOn) await setTorchState(false);
-        await html5QrCode.stop();
-        isScanning = false;
-        wrapper.classList.remove('cam-active');
-        btnCam.textContent = '📷 ACTIVATE CAM';
-        btnCam.className = 'btn-cam-start';
-        btnTorch.disabled = true;
-      }
-    }
-
-    async function toggleSenter() {
-      if (!isScanning) return;
-      await setTorchState(!isTorchOn);
-    }
-
-    async function setTorchState(state) {
-      const btnTorch = document.getElementById('btnSenter');
-      try {
-        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: state }] });
-        isTorchOn = state;
-        btnTorch.textContent = isTorchOn ? '🔦 LIGHT: ON' : '🔦 ILLUMINATE';
-        btnTorch.className = isTorchOn ? 'btn-torch-on' : 'btn-torch-off';
-      } catch (err) {
-        tampilkanStatus('error', 'FLASHLIGHT NOT SUPPORTED ON THIS DEVICE.');
-      }
-    }
-
-    function onScanSuccess(decodedText) {
-      const now = Date.now();
-      if (decodedText === lastScannedCode && (now - lastScannedTime) < 1200) return;
-      lastScannedCode = decodedText;
-      lastScannedTime = now;
-
-      masukkanKeAntrean(decodedText);
-    }
-
-    function kirimManual() {
-      initAudio();
-      const input = document.getElementById('manualInput');
-      if (!input.value.trim()) {
-        suaraErrorKeras();
-        triggerVisualFeedback('error', 'scannerCard');
-        tampilkanStatus('error', 'Masukkan nomor resi terlebih dahulu.');
-        return;
-      }
-      masukkanKeAntrean(input.value.trim());
-      input.value = '';
-    }
-
-    function masukkanKeAntrean(nomorResi) {
-      const kurir = document.getElementById('kurirSelect').value;
-      const cekDuplikat = document.getElementById('cekDuplikat').checked;
-      const resiBersih = String(nomorResi).trim().toUpperCase();
-
-      if (!kurir) {
-        suaraErrorKeras();
-        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-        triggerVisualFeedback('error', 'kurirCard');
-        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
-        return;
-      }
-
-      if (!resiBersih.startsWith('SPXID06')) {
-        suaraErrorKeras();
-        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-        triggerVisualFeedback('error', 'scannerCard');
-        tampilkanStatus('error', '⛔ DITOLAK: "' + resiBersih + '" bukan resi SPXID06');
-        return;
-      }
-
-      const cacheKey = kurir + '::' + resiBersih;
-      if (cekDuplikat && localCache.has(cacheKey)) {
-        suaraErrorKeras();
-        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
-        triggerVisualFeedback('duplicate', 'scannerCard');
-        tampilkanStatus('duplicate', '⚠️ DUPLIKAT LOKAL: ' + resiBersih + ' sudah di-scan!');
-        return;
-      }
-
-      localCache.add(cacheKey);
-      suaraSuksesKeras();
-      if (navigator.vibrate) navigator.vibrate(100);
-      triggerVisualFeedback('success', 'scannerCard');
-
-      const waktuLokal = new Date().toLocaleTimeString('id-ID', { hour12: false });
-      const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-
-      uploadQueue.push({
-        id: itemId,
-        kurir: kurir,
-        resi: resiBersih,
-        cekDuplikat: cekDuplikat
-      });
-
-      updateQueueUI();
-      tampilkanStatus('success', '⚡ MASUK ANTREAN: ' + resiBersih);
-      tambahKeRiwayat(itemId, resiBersih, kurir, waktuLokal);
-    }
-
-    async function prosesAntreanBatch() {
-      if (isSyncing || uploadQueue.length === 0) return;
-
-      isSyncing = true;
-      updateSyncStatus(true, 'Menyimpan ' + uploadQueue.length + ' data...');
-
-      const batchToSend = uploadQueue.slice(0, 25);
-
-      try {
-        const response = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ items: batchToSend })
-        });
-        const res = await response.json();
-
-        if (res.status === 'success' && Array.isArray(res.results)) {
-          uploadQueue.splice(0, batchToSend.length);
-
-          res.results.forEach((hasil, idx) => {
-            const origItem = batchToSend[idx];
-            if (!origItem) return;
-            const badgeEl = document.getElementById('status-' + origItem.id);
-            const cardEl = document.getElementById(origItem.id);
-
-            if (hasil.status === 'success') {
-              if (badgeEl) { badgeEl.className = 'tag-status tag-ok'; badgeEl.textContent = 'TERSIMPAN #' + hasil.no; }
-              if (cardEl) cardEl.classList.add('synced');
-            } else if (hasil.status === 'duplicate') {
-              suaraErrorKeras();
-              triggerVisualFeedback('duplicate', 'scannerCard');
-              if (badgeEl) { badgeEl.className = 'tag-status tag-dup'; badgeEl.textContent = 'DUPLIKAT SHEET'; }
-              if (cardEl) cardEl.classList.add('dup');
-              tampilkanStatus('duplicate', '⚠️ ' + hasil.message);
-            } else {
-              if (badgeEl) { badgeEl.className = 'tag-status tag-dup'; badgeEl.textContent = 'GAGAL'; }
-            }
-          });
-          updateSyncStatus(false, 'Semua Data Tersinkron');
-        } else {
-          updateSyncStatus(true, 'Antrean padat, mencoba ulang...');
-        }
-      } catch (err) {
-        updateSyncStatus(true, 'Koneksi lambat, mengulang...');
-      } finally {
-        isSyncing = false;
-        updateQueueUI();
-      }
-    }
-
-    function updateQueueUI() {
-      document.getElementById('queueCount').textContent = 'Antrean: ' + uploadQueue.length;
-    }
-
-    function updateSyncStatus(isBusy, text) {
-      const dot = document.getElementById('syncDot');
-      dot.className = isBusy ? 'sync-dot busy' : 'sync-dot';
-      document.getElementById('syncText').textContent = text;
-    }
-
-    function tampilkanStatus(tipe, pesan) {
-      const box = document.getElementById('statusBox');
-      box.className = '';
-      void box.offsetWidth;
-      box.className = 'status-' + tipe;
-      box.textContent = pesan;
-    }
-
-    function tambahKeRiwayat(itemId, resi, kurir, waktu) {
-      totalScan++;
-      const counterEl = document.getElementById('scanCounter');
-      counterEl.textContent = totalScan + ' SCAN';
-      counterEl.classList.add('pop');
-      setTimeout(() => counterEl.classList.remove('pop'), 200);
-
-      const list = document.getElementById('historyList');
-      if (totalScan === 1) list.innerHTML = '';
-
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      item.id = itemId;
+    // Tambah entri ke Log Transmisi
+    function addLog(title, subtitle, statusType = "success", badgeText = "OK") {
+      const logList = document.getElementById("logList");
+      const item = document.createElement("div");
+      item.className = `log-item ${statusType}`;
       item.innerHTML = `
         <div>
-          <div class="history-resi">${resi}</div>
-          <div class="history-meta">KURIR: <b style="color:var(--orange-bright);">${kurir}</b> • ${waktu}</div>
+          <div class="log-resi">${title}</div>
+          <div class="log-meta">${subtitle}</div>
         </div>
-        <span class="tag-status tag-pending" id="status-${itemId}">MENGIRIM...</span>
+        <span class="log-badge">${badgeText}</span>
       `;
-      list.prepend(item);
-    }
+      logList.prepend(item);
 
-    // SISTEM AUDIO SUPER NYARING (MAX GAIN + COMPRESSOR)
-    function suaraSuksesKeras() {
-      try {
-        initAudio();
-        const now = audioCtx.currentTime;
-
-        const compressor = audioCtx.createDynamicsCompressor();
-        compressor.threshold.setValueAtTime(-10, now);
-        compressor.knee.setValueAtTime(0, now);
-        compressor.ratio.setValueAtTime(20, now);
-        compressor.attack.setValueAtTime(0, now);
-        compressor.release.setValueAtTime(0.1, now);
-        compressor.connect(audioCtx.destination);
-
-        const masterGain = audioCtx.createGain();
-        masterGain.gain.setValueAtTime(1.0, now);
-        masterGain.connect(compressor);
-
-        const osc1 = audioCtx.createOscillator();
-        osc1.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(1500, now);
-        osc1.frequency.setValueAtTime(2400, now + 0.08);
-        osc1.connect(masterGain);
-
-        const osc2 = audioCtx.createOscillator();
-        osc2.type = 'square';
-        osc2.frequency.setValueAtTime(3000, now);
-        osc2.frequency.setValueAtTime(3600, now + 0.08);
-        osc2.connect(masterGain);
-
-        osc1.start(now);
-        osc2.start(now);
-        osc1.stop(now + 0.18);
-        osc2.stop(now + 0.18);
-      } catch (e) {}
-    }
-
-    function suaraErrorKeras() {
-      try {
-        initAudio();
-        const now = audioCtx.currentTime;
-
-        const masterGain = audioCtx.createGain();
-        masterGain.gain.setValueAtTime(1.0, now);
-        masterGain.connect(audioCtx.destination);
-
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(280, now);
-        osc.frequency.setValueAtTime(220, now + 0.18);
-
-        masterGain.gain.setValueAtTime(1.0, now);
-        masterGain.gain.setValueAtTime(0.0, now + 0.14);
-        masterGain.gain.setValueAtTime(1.0, now + 0.18);
-
-        osc.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 0.36);
-      } catch (e) {}
-    }
-
-    window.addEventListener('beforeunload', function (e) {
-      if (uploadQueue.length > 0) {
-        e.preventDefault();
-        e.returnValue = '';
+      // Batasi maksimal 40 item log di memori HP agar tetap ringan
+      while (logList.children.length > 40) {
+        logList.removeChild(logList.lastChild);
       }
+    }
+
+    // Muat daftar 32 kurir dari Spreadsheet (fallback ke list lokal)
+    async function loadCourierList() {
+      const select = document.getElementById("courierSelect");
+      populateSelect(DEFAULT_COURIERS);
+
+      try {
+        const res = await fetch(APPS_SCRIPT_URL);
+        const data = await res.json();
+        if (data.status === "success" && Array.isArray(data.couriers) && data.couriers.length > 0) {
+          populateSelect(data.couriers);
+        }
+      } catch (err) {
+        console.warn("Menggunakan daftar kurir cadangan lokal:", err);
+      }
+    }
+
+    function populateSelect(list) {
+      const select = document.getElementById("courierSelect");
+      const currentVal = select.value;
+      select.innerHTML = `<option value="">-- PILIH NAMA KURIR (${list.length}) --</option>`;
+      list.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      if (currentVal) select.value = currentVal;
+    }
+
+    // Kirim data resi ke Google Spreadsheet
+    async function processWaybill(rawCode) {
+      const resi = rawCode.trim().toUpperCase();
+      const courier = document.getElementById("courierSelect").value;
+
+      if (!courier) {
+        playBeep("error");
+        addLog(resi, "Pilih nama kurir terlebih dahulu!", "error", "NO KURIR");
+        return;
+      }
+
+      if (!isValidResiFormat(resi)) {
+        playBeep("error");
+        addLog(resi, "Ditolak: Bukan awalan SPXID06 atau ID", "error", "INVALID");
+        return;
+      }
+
+      const sessionKey = `${courier}::${resi}`;
+      if (recentSessionScans.has(sessionKey)) {
+        playBeep("error");
+        addLog(resi, `Sudah discan untuk ${courier}`, "warning", "DUPLIKAT");
+        return;
+      }
+
+      recentSessionScans.add(sessionKey);
+      playBeep("success");
+      totalSent++;
+      document.getElementById("scanCounter").textContent = `TERKIRIM: ${totalSent}`;
+      addLog(resi, `Mengirim ke sheet ${courier}...`, "success", "SENDING");
+
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "scan",
+            resi: resi,
+            courier: courier
+          })
+        });
+
+        const result = await response.json();
+        if (result.status === "success") {
+          addLog(resi, `Tersimpan di ${courier} (${result.timestamp || "OK"})`, "success", "SAVED");
+        } else if (result.status === "duplicate") {
+          playBeep("error");
+          addLog(resi, result.message, "warning", "DUPLIKAT");
+        } else {
+          recentSessionScans.delete(sessionKey);
+          playBeep("error");
+          addLog(resi, result.message || "Gagal menyimpan", "error", "GAGAL");
+        }
+      } catch (err) {
+        recentSessionScans.delete(sessionKey);
+        playBeep("error");
+        addLog(resi, "Gangguan jaringan saat mengirim data", "error", "NET ERR");
+      }
+    }
+
+    // Inisialisasi Kamera Scanner Fleksibel
+    async function startCameraScanner() {
+      html5QrCode = new Html5QrCode("reader");
+
+      const config = {
+        fps: 18,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          return {
+            width: Math.floor(viewfinderWidth * 0.78),
+            height: Math.floor(viewfinderHeight * 0.56)
+          };
+        },
+        aspectRatio: 1.5
+      };
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            const now = Date.now();
+            if (decodedText === lastScannedCode && now - lastScanTime < 1800) {
+              return;
+            }
+            lastScannedCode = decodedText;
+            lastScanTime = now;
+            processWaybill(decodedText);
+          },
+          () => {}
+        );
+      } catch (err) {
+        addLog("Kamera Tidak Aktif", "Izinkan akses kamera browser atau gunakan input manual", "error", "CAM ERR");
+      }
+    }
+
+    // Kontrol Tombol Flash ON/OFF
+    document.getElementById("flashToggleBtn").addEventListener("click", async () => {
+      if (!html5QrCode) return;
+      const btn = document.getElementById("flashToggleBtn");
+      try {
+        isFlashOn = !isFlashOn;
+        await html5QrCode.applyVideoConstraints({
+          advanced: [{ torch: isFlashOn }]
+        });
+        btn.textContent = isFlashOn ? "⚡ FLASH: ON" : "⚡ FLASH: OFF";
+        btn.classList.toggle("active", isFlashOn);
+      } catch (err) {
+        isFlashOn = false;
+        addLog("Flash Tidak Didukung", "Perangkat/browser tidak mendukung kontrol senter", "warning", "INFO");
+      }
+    });
+
+    // Input Manual
+    document.getElementById("manualSubmitBtn").addEventListener("click", () => {
+      const input = document.getElementById("manualResiInput");
+      if (input.value.trim()) {
+        processWaybill(input.value);
+        input.value = "";
+      }
+    });
+
+    document.getElementById("manualResiInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("manualSubmitBtn").click();
+      }
+    });
+
+    // Modal Konfirmasi Arsip (Klik Robot)
+    const archiveModal = document.getElementById("archiveModal");
+    const archivePassInput = document.getElementById("archivePasswordInput");
+
+    document.getElementById("robotArchiveBtn").addEventListener("click", () => {
+      archivePassInput.value = "";
+      archiveModal.classList.add("open");
+      setTimeout(() => archivePassInput.focus(), 100);
+    });
+
+    document.getElementById("cancelArchiveBtn").addEventListener("click", () => {
+      archiveModal.classList.remove("open");
+    });
+
+    document.getElementById("confirmArchiveBtn").addEventListener("click", async () => {
+      const pass = archivePassInput.value.trim();
+      if (pass !== "1110") {
+        playBeep("error");
+        archivePassInput.value = "";
+        archivePassInput.placeholder = "SALAH!";
+        return;
+      }
+
+      archiveModal.classList.remove("open");
+      addLog("Proses Arsip Dimulai...", "Memindahkan data 32 sheet (A–Z) ke Resi History", "warning", "PROSES");
+
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "archive",
+            password: pass
+          })
+        });
+
+        const result = await response.json();
+        if (result.status === "success") {
+          playBeep("success");
+          recentSessionScans.clear();
+          totalSent = 0;
+          document.getElementById("scanCounter").textContent = "TERKIRIM: 0";
+          addLog("Arsip Selesai", result.message, "success", "ARCHIVED");
+        } else {
+          playBeep("error");
+          addLog("Arsip Gagal", result.message || "Terjadi kesalahan", "error", "GAGAL");
+        }
+      } catch (err) {
+        playBeep("error");
+        addLog("Arsip Gagal", "Koneksi terputus saat mengarsipkan data", "error", "NET ERR");
+      }
+    });
+
+    // Jalankan saat halaman dibuka
+    window.addEventListener("DOMContentLoaded", () => {
+      loadCourierList();
+      startCameraScanner();
     });
   </script>
 </body>
