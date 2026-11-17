@@ -8,7 +8,7 @@
   <style>
     :root {
       --bg-dark: #070402;
-      --bg-card: rgba(18, 11, 7, 0.85);
+      --bg-card: rgba(18, 11, 7, 0.84);
       --orange-neon: #ff5500;
       --orange-bright: #ff8c00;
       --orange-glow: rgba(255, 85, 0, 0.45);
@@ -32,96 +32,24 @@
     }
 
     /* =========================================================
-       1. BACKGROUND HUD ORANGE HIDUP (GAMBAR + RADAR + LASER)
+       1. VIDEO BACKGROUND HUD ASLI (.MP4) BERWARNA ORANGE
        ========================================================= */
-    .bg-hud-layer {
+    .bg-video-layer {
       position: fixed;
-      top: -5%; left: -5%;
-      width: 110%; height: 110%;
-      background-image: url('bg-hud.jpg.jfif');
-      background-size: cover;
-      background-position: center;
-      filter: hue-rotate(175deg) saturate(280%) brightness(0.72) contrast(1.2);
-      z-index: -4;
-      pointer-events: none;
-      animation: hudBreath 12s ease-in-out infinite alternate;
-    }
-
-    /* Grid Futuristik Bergerak */
-    .bg-hud-grid {
-      position: fixed;
-      inset: 0;
-      background-image: 
-        linear-gradient(rgba(255, 85, 0, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 85, 0, 0.08) 1px, transparent 1px);
-      background-size: 36px 36px;
-      z-index: -3;
-      pointer-events: none;
-      animation: gridMove 20s linear infinite;
-    }
-
-    /* Lingkaran Radar HUD Berputar */
-    .bg-hud-radar {
-      position: fixed;
-      top: 50%; left: 50%;
-      width: 520px; height: 520px;
-      margin-top: -260px; margin-left: -260px;
-      border-radius: 50%;
-      border: 1px dashed rgba(255, 110, 0, 0.25);
-      box-shadow: inset 0 0 60px rgba(255, 85, 0, 0.08);
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      filter: hue-rotate(175deg) saturate(280%) brightness(0.8) contrast(1.18);
       z-index: -2;
       pointer-events: none;
-      animation: radarSpin 28s linear infinite;
-    }
-    .bg-hud-radar::before {
-      content: '';
-      position: absolute;
-      inset: 45px;
-      border-radius: 50%;
-      border: 1px solid rgba(255, 140, 0, 0.16);
-      border-top-color: rgba(255, 140, 0, 0.55);
-      animation: radarSpinReverse 16s linear infinite;
-    }
-
-    /* Garis Laser Scanner Menyapu Layar */
-    .bg-hud-scanline {
-      position: fixed;
-      left: 0; top: 0;
-      width: 100%; height: 3px;
-      background: linear-gradient(90deg, transparent, rgba(255, 115, 0, 0.65), transparent);
-      box-shadow: 0 0 18px rgba(255, 85, 0, 0.8);
-      z-index: -2;
-      pointer-events: none;
-      animation: screenScan 6s ease-in-out infinite;
     }
 
     .bg-hud-overlay {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.35) 0%, rgba(5, 3, 2, 0.84) 100%);
+      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.3) 0%, rgba(5, 3, 2, 0.8) 100%);
       z-index: -1;
       pointer-events: none;
-    }
-
-    @keyframes hudBreath {
-      0%   { transform: scale(1.0) translate(0, 0); opacity: 0.78; }
-      100% { transform: scale(1.05) translate(-6px, -8px); opacity: 0.96; }
-    }
-    @keyframes gridMove {
-      0%   { background-position: 0 0; }
-      100% { background-position: 36px 36px; }
-    }
-    @keyframes radarSpin {
-      100% { transform: rotate(360deg); }
-    }
-    @keyframes radarSpinReverse {
-      100% { transform: rotate(-360deg); }
-    }
-    @keyframes screenScan {
-      0%   { top: -5%; opacity: 0; }
-      15%  { opacity: 0.85; }
-      85%  { opacity: 0.85; }
-      100% { top: 105%; opacity: 0; }
     }
 
     /* =========================================================
@@ -186,8 +114,8 @@
     /* Kartu Glassmorphism */
     .card { 
       background: var(--bg-card); 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-radius: 16px; padding: 16px; margin-bottom: 14px; 
       border: 1px solid var(--border-color);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 0 15px rgba(255, 85, 0, 0.06);
@@ -257,7 +185,6 @@
     }
     #reader { width: 100%; }
 
-    /* Sudut Bidik Futuristik pada Kamera */
     .cam-corners {
       position: absolute;
       inset: 12px;
@@ -400,11 +327,10 @@
   </style>
 </head>
 <body>
-  <!-- Layer Background HUD Orange Hidup -->
-  <div class="bg-hud-layer"></div>
-  <div class="bg-hud-grid"></div>
-  <div class="bg-hud-radar"></div>
-  <div class="bg-hud-scanline"></div>
+  <!-- Video Background Asli (.mp4) Berwarna Orange -->
+  <video class="bg-video-layer" autoplay loop muted playsinline>
+    <source src="bg-hud.mp4" type="video/mp4">
+  </video>
   <div class="bg-hud-overlay"></div>
 
   <!-- Layer Kilatan Visual Feedback -->
@@ -484,7 +410,7 @@
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
 
-// Daftar Whitelist 32 Nama Kurir Resmi (Fallback & Filter Ketat di Frontend)
+    // Daftar Whitelist 32 Nama Kurir Resmi (Terurut Abjad A-Z)
     const WHITELIST_KURIR = [
       'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
       'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
@@ -512,7 +438,7 @@
     // Hapus Background Putih pada Gambar Robot di Pojok Kiri Atas
     function renderTransparentRobot() {
       const img = new Image();
-      img.src = 'robot-spx.jpg.jfif';
+      img.src = 'robot-spx.jpg';
       img.onload = function() {
         const canvas = document.getElementById('robotCanvas');
         const ctx = canvas.getContext('2d');
@@ -570,7 +496,7 @@
     function triggerVisualFeedback(type, targetCardId) {
       const flash = document.getElementById('flashOverlay');
       flash.className = 'flash-overlay';
-      void flash.offsetWidth; // Force reflow agar animasi bisa berulang cepat
+      void flash.offsetWidth;
       flash.classList.add('flash-' + type);
 
       if (type === 'success') {
@@ -604,6 +530,11 @@
     window.onload = async function() {
       renderTransparentRobot();
       html5QrCode = new Html5Qrcode("reader");
+
+      const bgVid = document.querySelector('.bg-video-layer');
+      if (bgVid) {
+        bgVid.play().catch(() => {});
+      }
       
       const skeleton = document.getElementById('kurirSkeleton');
       const select = document.getElementById('kurirSelect');
@@ -621,10 +552,8 @@
             .sort((a, b) => a.localeCompare(b, 'id'));
         }
 
-        // Jika di sheet belum terbaca, gunakan daftar resmi terurut abjad
         if (daftarKurir.length === 0) daftarKurir = WHITELIST_KURIR;
 
-        // Kosongkan default-nya dengan placeholder wajib pilih
         select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
         daftarKurir.forEach(function(kurir) {
           const opt = document.createElement('option');
@@ -634,7 +563,6 @@
         });
 
       } catch (err) {
-        // Fallback jika jaringan lambat: tetap tampilkan 32 kurir terurut A-Z
         select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
         WHITELIST_KURIR.forEach(function(kurir) {
           const opt = document.createElement('option');
@@ -643,7 +571,6 @@
           select.appendChild(opt);
         });
       } finally {
-        // Matikan Skeleton Screen, tampilkan Dropdown
         skeleton.style.display = 'none';
         select.style.display = 'block';
       }
@@ -655,7 +582,6 @@
       initAudio();
       const kurir = document.getElementById('kurirSelect').value;
 
-      // Kunci kamera jika kurir belum dipilih
       if (!isScanning && !kurir) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
@@ -750,7 +676,6 @@
       const cekDuplikat = document.getElementById('cekDuplikat').checked;
       const resiBersih = String(nomorResi).trim().toUpperCase();
 
-      // Validasi Wajib Pilih Kurir
       if (!kurir) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
@@ -759,7 +684,6 @@
         return;
       }
 
-      // Validasi Wajib SPXID06
       if (!resiBersih.startsWith('SPXID06')) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
@@ -768,7 +692,6 @@
         return;
       }
 
-      // Validasi Duplikat Lokal
       const cacheKey = kurir + '::' + resiBersih;
       if (cekDuplikat && localCache.has(cacheKey)) {
         suaraErrorKeras();
@@ -778,7 +701,6 @@
         return;
       }
 
-      // Lolos Validasi -> Feedback Sukses Seketika
       localCache.add(cacheKey);
       suaraSuksesKeras();
       if (navigator.vibrate) navigator.vibrate(100);
