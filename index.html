@@ -7,18 +7,21 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
-      --bg-dark: #090604;
-      --bg-card: rgba(18, 12, 8, 0.86);
+      --bg-dark: #070402;
+      --bg-card: rgba(18, 11, 7, 0.85);
       --orange-neon: #ff5500;
-      --orange-bright: #ff8800;
+      --orange-bright: #ff8c00;
       --orange-glow: rgba(255, 85, 0, 0.45);
       --orange-dim: rgba(255, 85, 0, 0.14);
+      --green-neon: #10b981;
+      --yellow-neon: #f59e0b;
+      --red-neon: #ef4444;
       --text-main: #f4f4f5;
       --text-sub: #d4d4d8;
       --border-color: rgba(255, 107, 0, 0.35);
     }
 
-    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
     
     body { 
       margin: 0; padding: 16px; 
@@ -28,7 +31,9 @@
       min-height: 100vh;
     }
 
-    /* 1. BACKGROUND HUD BERGERAK & DIUBAH KE WARNA ORANGE */
+    /* =========================================================
+       1. BACKGROUND HUD ORANGE HIDUP (GAMBAR + RADAR + LASER)
+       ========================================================= */
     .bg-hud-layer {
       position: fixed;
       top: -5%; left: -5%;
@@ -36,50 +41,127 @@
       background-image: url('bg-hud.jpg.jfif');
       background-size: cover;
       background-position: center;
-      filter: hue-rotate(175deg) saturate(260%) brightness(0.75) contrast(1.15);
+      filter: hue-rotate(175deg) saturate(280%) brightness(0.72) contrast(1.2);
+      z-index: -4;
+      pointer-events: none;
+      animation: hudBreath 12s ease-in-out infinite alternate;
+    }
+
+    /* Grid Futuristik Bergerak */
+    .bg-hud-grid {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255, 85, 0, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 85, 0, 0.08) 1px, transparent 1px);
+      background-size: 36px 36px;
+      z-index: -3;
+      pointer-events: none;
+      animation: gridMove 20s linear infinite;
+    }
+
+    /* Lingkaran Radar HUD Berputar */
+    .bg-hud-radar {
+      position: fixed;
+      top: 50%; left: 50%;
+      width: 520px; height: 520px;
+      margin-top: -260px; margin-left: -260px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 110, 0, 0.25);
+      box-shadow: inset 0 0 60px rgba(255, 85, 0, 0.08);
       z-index: -2;
       pointer-events: none;
-      animation: hudMotion 14s ease-in-out infinite alternate;
+      animation: radarSpin 28s linear infinite;
+    }
+    .bg-hud-radar::before {
+      content: '';
+      position: absolute;
+      inset: 45px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 140, 0, 0.16);
+      border-top-color: rgba(255, 140, 0, 0.55);
+      animation: radarSpinReverse 16s linear infinite;
+    }
+
+    /* Garis Laser Scanner Menyapu Layar */
+    .bg-hud-scanline {
+      position: fixed;
+      left: 0; top: 0;
+      width: 100%; height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255, 115, 0, 0.65), transparent);
+      box-shadow: 0 0 18px rgba(255, 85, 0, 0.8);
+      z-index: -2;
+      pointer-events: none;
+      animation: screenScan 6s ease-in-out infinite;
     }
 
     .bg-hud-overlay {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.45) 0%, rgba(5, 3, 2, 0.85) 100%);
+      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.35) 0%, rgba(5, 3, 2, 0.84) 100%);
       z-index: -1;
       pointer-events: none;
     }
 
-    @keyframes hudMotion {
-      0%   { transform: scale(1.0) translate(0px, 0px); opacity: 0.78; }
-      50%  { transform: scale(1.06) translate(-8px, -10px); opacity: 0.95; }
-      100% { transform: scale(1.03) translate(8px, 6px); opacity: 0.82; }
+    @keyframes hudBreath {
+      0%   { transform: scale(1.0) translate(0, 0); opacity: 0.78; }
+      100% { transform: scale(1.05) translate(-6px, -8px); opacity: 0.96; }
+    }
+    @keyframes gridMove {
+      0%   { background-position: 0 0; }
+      100% { background-position: 36px 36px; }
+    }
+    @keyframes radarSpin {
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes radarSpinReverse {
+      100% { transform: rotate(-360deg); }
+    }
+    @keyframes screenScan {
+      0%   { top: -5%; opacity: 0; }
+      15%  { opacity: 0.85; }
+      85%  { opacity: 0.85; }
+      100% { top: 105%; opacity: 0; }
     }
 
-    /* 2. MASKOT ROBOT POJOK KANAN ATAS (TANPA BACKGROUND) */
+    /* =========================================================
+       2. MASKOT ROBOT POJOK KIRI ATAS (TANPA BACKGROUND)
+       ========================================================= */
     .robot-mascot {
       position: fixed;
       top: 8px;
-      right: 6px;
-      width: 92px;
+      left: 8px;
+      width: 88px;
       height: auto;
       z-index: 999;
       pointer-events: none;
-      filter: drop-shadow(0 6px 14px rgba(255, 85, 0, 0.55));
+      filter: drop-shadow(0 6px 14px rgba(255, 85, 0, 0.6));
       animation: robotFloat 3.2s ease-in-out infinite;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .robot-mascot.robot-happy {
+      animation: robotCheer 0.55s ease;
     }
 
     @keyframes robotFloat {
       0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-7px) rotate(-2deg); }
+      50%      { transform: translateY(-7px) rotate(2.5deg); }
+    }
+    @keyframes robotCheer {
+      0%   { transform: scale(1) translateY(0); }
+      35%  { transform: scale(1.16) translateY(-10px) rotate(6deg); }
+      70%  { transform: scale(0.96) translateY(2px) rotate(-3deg); }
+      100% { transform: scale(1) translateY(0); }
     }
 
+    /* =========================================================
+       3. LAYOUT & LOGO TENGAH
+       ========================================================= */
     .container { max-width: 480px; margin: 0 auto; position: relative; z-index: 1; }
     
-    /* 3. HEADER & LOGO SPX DI TENGAH */
     .header { 
       text-align: center; 
-      margin-top: 12px;
+      margin-top: 10px;
       margin-bottom: 18px; 
       display: flex;
       flex-direction: column;
@@ -87,28 +169,30 @@
       justify-content: center;
     }
     .center-logo {
-      width: 175px;
-      max-width: 60%;
+      width: 170px;
+      max-width: 58%;
       height: auto;
       display: block;
       margin: 0 auto 6px auto;
-      filter: drop-shadow(0 0 12px rgba(255, 85, 0, 0.65));
+      filter: drop-shadow(0 0 14px rgba(255, 85, 0, 0.7));
+      transition: transform 0.3s ease;
     }
     .header p { 
       margin: 2px 0 0; font-size: 11px; font-weight: 700;
-      color: var(--orange-bright); letter-spacing: 1.5px; 
-      text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+      color: var(--orange-bright); letter-spacing: 1.6px; 
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
     }
 
-    /* Kartu Glassmorphism Futuristic */
+    /* Kartu Glassmorphism */
     .card { 
       background: var(--bg-card); 
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       border-radius: 16px; padding: 16px; margin-bottom: 14px; 
       border: 1px solid var(--border-color);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 0 15px rgba(255, 85, 0, 0.06);
       position: relative; overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
     }
     .card::before {
       content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
@@ -119,37 +203,150 @@
     
     select, input[type="text"] {
       width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.85); color: var(--text-main); font-size: 15px; outline: none; transition: 0.3s;
+      background: rgba(0, 0, 0, 0.88); color: var(--text-main); font-size: 15px; font-weight: 600;
+      outline: none; transition: all 0.25s ease;
     }
     select:focus, input[type="text"]:focus { 
       border-color: var(--orange-neon); 
       box-shadow: 0 0 0 3px var(--orange-dim); 
     }
+    select.select-empty {
+      color: var(--orange-bright);
+      border-color: rgba(255, 140, 0, 0.6);
+    }
+
+    /* =========================================================
+       4. SKELETON SCREEN (SAAT MEMUAT DAFTAR KURIR)
+       ========================================================= */
+    .skeleton-box {
+      width: 100%;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(
+        110deg,
+        rgba(35, 22, 14, 0.9) 25%,
+        rgba(255, 95, 0, 0.25) 50%,
+        rgba(35, 22, 14, 0.9) 75%
+      );
+      background-size: 200% 100%;
+      border: 1px solid rgba(255, 107, 0, 0.25);
+      animation: skeletonShimmer 1.3s infinite linear;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 12px;
+      color: rgba(255, 160, 80, 0.75);
+      letter-spacing: 0.8px;
+    }
+    @keyframes skeletonShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
 
     .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
     .checkbox-row input { width: 18px; height: 18px; accent-color: var(--orange-neon); cursor: pointer; }
-    .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
 
+    /* =========================================================
+       5. KAMERA & MICRO ANIMATIONS (CORNER BRACKETS + BUTTONS)
+       ========================================================= */
     #reader-wrapper { 
       position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
       background: #000; min-height: 240px; border: 1px solid var(--border-color);
+      transition: all 0.25s ease;
     }
     #reader { width: 100%; }
+
+    /* Sudut Bidik Futuristik pada Kamera */
+    .cam-corners {
+      position: absolute;
+      inset: 12px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.35;
+      transition: opacity 0.3s ease;
+    }
+    .cam-active .cam-corners {
+      opacity: 1;
+      animation: cornerPulse 1.8s ease-in-out infinite;
+    }
+    .cam-corners span {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--orange-neon);
+      border-style: solid;
+    }
+    .cam-corners span:nth-child(1) { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+    .cam-corners span:nth-child(2) { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+    .cam-corners span:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+    .cam-corners span:nth-child(4) { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+    @keyframes cornerPulse {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(0.97); }
+    }
 
     .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
     button {
       padding: 13px 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; 
-      transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      position: relative; overflow: hidden;
     }
-    button:active { transform: scale(0.96); }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:active:not(:disabled) { transform: scale(0.94); }
+    button:disabled { opacity: 0.38; cursor: not-allowed; }
 
     .btn-cam-start { background: linear-gradient(135deg, #ff7b00, #ff3d00); color: #fff; box-shadow: 0 4px 15px var(--orange-glow); }
-    .btn-cam-stop { background: rgba(0, 0, 0, 0.6); color: var(--orange-bright); border: 1px solid var(--orange-neon); }
+    .btn-cam-stop { background: rgba(0, 0, 0, 0.65); color: var(--orange-bright); border: 1px solid var(--orange-neon); }
     .btn-torch-off { background: rgba(20, 20, 22, 0.9); color: var(--text-sub); border: 1px solid var(--border-color); }
-    .btn-torch-on { background: #fff; color: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.7); }
+    .btn-torch-on { background: #fff; color: #000; box-shadow: 0 0 18px rgba(255, 255, 255, 0.8); }
     .btn-manual { background: var(--orange-dim); color: var(--orange-bright); width: 100%; margin-top: 10px; border: 1px solid var(--orange-neon); }
+    .btn-manual:hover:not(:disabled) { background: rgba(255, 85, 0, 0.25); }
+
+    /* =========================================================
+       6. VISUAL FEEDBACK (KILATAN WARNA & GETAR SHAKE)
+       ========================================================= */
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 998;
+      opacity: 0;
+    }
+    .flash-success { animation: flashGreen 0.45s ease-out; }
+    .flash-duplicate { animation: flashYellow 0.5s ease-out; }
+    .flash-error { animation: flashRed 0.5s ease-out; }
+
+    @keyframes flashGreen {
+      0%   { opacity: 0.38; background: radial-gradient(circle, transparent 35%, rgba(16, 185, 129, 0.75) 100%); }
+      100% { opacity: 0; }
+    }
+    @keyframes flashYellow {
+      0%   { opacity: 0.42; background: radial-gradient(circle, transparent 35%, rgba(245, 158, 11, 0.8) 100%); }
+      100% { opacity: 0; }
+    }
+    @keyframes flashRed {
+      0%   { opacity: 0.45; background: radial-gradient(circle, transparent 35%, rgba(239, 68, 68, 0.85) 100%); }
+      100% { opacity: 0; }
+    }
+
+    .shake-anim {
+      animation: horizontalShake 0.42s cubic-bezier(.36,.07,.19,.97) both;
+      border-color: var(--red-neon) !important;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
+    }
+    .pulse-success-card {
+      border-color: var(--green-neon) !important;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.5) !important;
+    }
+
+    @keyframes horizontalShake {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(5px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+      40%, 60% { transform: translate3d(7px, 0, 0); }
+    }
 
     /* Bar Status Antrean Sinkronisasi */
     .sync-bar {
@@ -164,24 +361,36 @@
 
     #statusBox {
       display: none; padding: 12px; border-radius: 12px; margin-bottom: 14px;
-      font-size: 13px; font-weight: 600; text-align: center;
+      font-size: 13px; font-weight: 700; text-align: center;
       backdrop-filter: blur(6px);
+      animation: statusPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .status-success { display: block !important; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; }
-    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fbbf24; }
-    .status-error { display: block !important; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; }
+    @keyframes statusPop {
+      0%   { transform: scale(0.92); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .status-success { display: block !important; background: rgba(16, 185, 129, 0.22); border: 1px solid #10b981; color: #34d399; }
+    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
+    .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
 
+    /* Riwayat & Micro Animation Slide-In */
     .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .badge { background: var(--orange-neon); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; }
+    .badge { background: var(--orange-neon); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; transition: transform 0.2s ease; }
+    .badge.pop { transform: scale(1.22); }
     .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     
     .history-item {
-      background: rgba(0, 0, 0, 0.8); padding: 10px 14px; border-radius: 10px; 
+      background: rgba(0, 0, 0, 0.82); padding: 10px 14px; border-radius: 10px; 
       border-left: 3px solid #f59e0b;
       display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+      animation: slideInItem 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes slideInItem {
+      0%   { opacity: 0; transform: translateY(-12px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
     }
     .history-item.synced { border-left-color: #10b981; }
-    .history-item.dup { border-left-color: #ef4444; opacity: 0.7; }
+    .history-item.dup { border-left-color: #ef4444; opacity: 0.72; }
     .history-resi { font-weight: 700; color: #fff; font-family: monospace; font-size: 14px; }
     .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
     .tag-status { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
@@ -191,25 +400,40 @@
   </style>
 </head>
 <body>
-  <!-- Layer 1: Background HUD Bergerak Berwarna Orange -->
+  <!-- Layer Background HUD Orange Hidup -->
   <div class="bg-hud-layer"></div>
+  <div class="bg-hud-grid"></div>
+  <div class="bg-hud-radar"></div>
+  <div class="bg-hud-scanline"></div>
   <div class="bg-hud-overlay"></div>
 
-  <!-- Layer 2: Maskot Robot Pojok Kanan Atas (Otomatis Hapus Background Putih) -->
+  <!-- Layer Kilatan Visual Feedback -->
+  <div id="flashOverlay" class="flash-overlay"></div>
+
+  <!-- Maskot Robot Pojok Kiri Atas (Otomatis Hapus Background Putih) -->
   <canvas id="robotCanvas" class="robot-mascot"></canvas>
 
   <div class="container">
-    <!-- Layer 3: Logo SPX Express di Tengah -->
+    <!-- Logo SPX Express di Tengah -->
     <div class="header">
       <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
       <p>TURBO SCANNER // SPXID06 ONLY</p>
     </div>
 
-    <div class="card">
+    <!-- Kartu Pemilihan Kurir dengan Skeleton Screen -->
+    <div class="card" id="kurirCard">
       <label for="kurirSelect">Target Database (Kurir)</label>
-      <select id="kurirSelect">
-        <option value="">Memuat target sistem...</option>
+      
+      <!-- Skeleton Screen saat loading -->
+      <div id="kurirSkeleton" class="skeleton-box">
+        MENGHUBUNGKAN DATABASE KURIR...
+      </div>
+
+      <!-- Dropdown Kurir (Tersembunyi sampai data siap) -->
+      <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
+        <option value="">-- PILIH NAMA KURIR --</option>
       </select>
+
       <div class="checkbox-row">
         <input type="checkbox" id="cekDuplikat" checked>
         <label for="cekDuplikat">Blokir duplikasi resi otomatis</label>
@@ -224,8 +448,12 @@
 
     <div id="statusBox"></div>
 
-    <div class="card">
+    <!-- Kartu Kamera Scanner -->
+    <div class="card" id="scannerCard">
       <div id="reader-wrapper">
+        <div class="cam-corners">
+          <span></span><span></span><span></span><span></span>
+        </div>
         <div id="reader"></div>
       </div>
       <div class="btn-group">
@@ -234,12 +462,14 @@
       </div>
     </div>
 
+    <!-- Kartu Input Manual -->
     <div class="card">
       <label for="manualInput">Manual Override (Wajib SPXID06)</label>
       <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789...">
       <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
     </div>
 
+    <!-- Kartu Riwayat Transmisi -->
     <div class="card">
       <div class="history-header">
         <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
@@ -254,6 +484,19 @@
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
 
+// Daftar Whitelist 32 Nama Kurir Resmi (Fallback & Filter Ketat di Frontend)
+    const WHITELIST_KURIR = [
+      'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
+      'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
+      'SAHRUL ANAM', 'KHAIRUDDIN', 'HAMDANI', 'NURUL ANWAR',
+      'MASRUDI', 'ABD MAJID', 'SUMARI', 'WASIS BUDIONO',
+      'ARMAN SUSIANTO', 'ABDURRAHMAN', 'MOH SAHRIL', 'DWI AGUSTIONO',
+      'MIFTAHUL GHANI', 'IRVAN FAUZY', 'MUHAMMAD AINUS SYAMSI',
+      'MUHAMMAD NURULLAH AJI SAPUTRA', 'MOHAMMAD HARIS', 'SANDI AGUSTINO',
+      'EDY MUCHLAS', 'MOH. MAULANA TAQWIM', 'ABD MUTHALIB',
+      'MOH. TRIOWAN KURNIA', 'AMIRIL MUKMININ'
+    ].sort((a, b) => a.localeCompare(b, 'id'));
+
     let html5QrCode = null;
     let isScanning = false;
     let isTorchOn = false;
@@ -266,7 +509,7 @@
     let uploadQueue = [];
     let isSyncing = false;
 
-    // Fungsi Otomatis Menghapus Background Putih pada Gambar Robot
+    // Hapus Background Putih pada Gambar Robot di Pojok Kiri Atas
     function renderTransparentRobot() {
       const img = new Image();
       img.src = 'robot-spx.jpg.jfif';
@@ -318,38 +561,91 @@
     function initAudio() {
       if (!audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          audioCtx = new AudioContextClass();
-        }
+        if (AudioContextClass) audioCtx = new AudioContextClass();
       }
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    // Visual Feedback Helper (Kilatan Layar, Getar Shake, & Reaksi Robot)
+    function triggerVisualFeedback(type, targetCardId) {
+      const flash = document.getElementById('flashOverlay');
+      flash.className = 'flash-overlay';
+      void flash.offsetWidth; // Force reflow agar animasi bisa berulang cepat
+      flash.classList.add('flash-' + type);
+
+      if (type === 'success') {
+        const robot = document.getElementById('robotCanvas');
+        robot.classList.remove('robot-happy');
+        void robot.offsetWidth;
+        robot.classList.add('robot-happy');
+
+        const scanCard = document.getElementById('scannerCard');
+        scanCard.classList.add('pulse-success-card');
+        setTimeout(() => scanCard.classList.remove('pulse-success-card'), 450);
+      } else {
+        const card = document.getElementById(targetCardId || 'scannerCard');
+        card.classList.remove('shake-anim');
+        void card.offsetWidth;
+        card.classList.add('shake-anim');
+        setTimeout(() => card.classList.remove('shake-anim'), 450);
+      }
+    }
+
+    function onKurirChange() {
+      const select = document.getElementById('kurirSelect');
+      if (select.value) {
+        select.classList.remove('select-empty');
+        document.getElementById('statusBox').style.display = 'none';
+      } else {
+        select.classList.add('select-empty');
       }
     }
 
     window.onload = async function() {
       renderTransparentRobot();
       html5QrCode = new Html5Qrcode("reader");
+      
+      const skeleton = document.getElementById('kurirSkeleton');
       const select = document.getElementById('kurirSelect');
 
       try {
         const response = await fetch(WEB_APP_URL);
         const res = await response.json();
-        select.innerHTML = '';
 
-        if (res.status === 'success' && res.data.length > 0) {
-          res.data.forEach(function(kurir) {
-            const opt = document.createElement('option');
-            opt.value = kurir;
-            opt.textContent = kurir;
-            select.appendChild(opt);
-          });
-        } else {
-          select.innerHTML = '<option value="">NO TARGET DETECTED</option>';
+        let daftarKurir = [];
+        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          const allowedSet = new Set(WHITELIST_KURIR.map(n => n.toUpperCase()));
+          daftarKurir = res.data
+            .map(n => String(n).trim())
+            .filter(n => allowedSet.has(n.toUpperCase()))
+            .sort((a, b) => a.localeCompare(b, 'id'));
         }
+
+        // Jika di sheet belum terbaca, gunakan daftar resmi terurut abjad
+        if (daftarKurir.length === 0) daftarKurir = WHITELIST_KURIR;
+
+        // Kosongkan default-nya dengan placeholder wajib pilih
+        select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
+        daftarKurir.forEach(function(kurir) {
+          const opt = document.createElement('option');
+          opt.value = kurir;
+          opt.textContent = kurir;
+          select.appendChild(opt);
+        });
+
       } catch (err) {
-        select.innerHTML = '<option value="">CONNECTION FAILED</option>';
-        tampilkanStatus('error', 'Gagal terhubung ke Database: ' + err);
+        // Fallback jika jaringan lambat: tetap tampilkan 32 kurir terurut A-Z
+        select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
+        WHITELIST_KURIR.forEach(function(kurir) {
+          const opt = document.createElement('option');
+          opt.value = kurir;
+          opt.textContent = kurir;
+          select.appendChild(opt);
+        });
+      } finally {
+        // Matikan Skeleton Screen, tampilkan Dropdown
+        skeleton.style.display = 'none';
+        select.style.display = 'block';
       }
 
       setInterval(prosesAntreanBatch, 2500);
@@ -357,8 +653,21 @@
 
     async function toggleKamera() {
       initAudio();
+      const kurir = document.getElementById('kurirSelect').value;
+
+      // Kunci kamera jika kurir belum dipilih
+      if (!isScanning && !kurir) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
+        document.getElementById('kurirSelect').focus();
+        return;
+      }
+
       const btnCam = document.getElementById('btnKamera');
       const btnTorch = document.getElementById('btnSenter');
+      const wrapper = document.getElementById('reader-wrapper');
 
       if (!isScanning) {
         try {
@@ -378,6 +687,7 @@
             () => {}
           );
           isScanning = true;
+          wrapper.classList.add('cam-active');
           btnCam.textContent = '⏹ DEACTIVATE CAM';
           btnCam.className = 'btn-cam-stop';
           btnTorch.disabled = false;
@@ -389,6 +699,7 @@
         if (isTorchOn) await setTorchState(false);
         await html5QrCode.stop();
         isScanning = false;
+        wrapper.classList.remove('cam-active');
         btnCam.textContent = '📷 ACTIVATE CAM';
         btnCam.className = 'btn-cam-start';
         btnTorch.disabled = true;
@@ -425,6 +736,8 @@
       initAudio();
       const input = document.getElementById('manualInput');
       if (!input.value.trim()) {
+        suaraErrorKeras();
+        triggerVisualFeedback('error', 'scannerCard');
         tampilkanStatus('error', 'Masukkan nomor resi terlebih dahulu.');
         return;
       }
@@ -437,30 +750,39 @@
       const cekDuplikat = document.getElementById('cekDuplikat').checked;
       const resiBersih = String(nomorResi).trim().toUpperCase();
 
+      // Validasi Wajib Pilih Kurir
+      if (!kurir) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
+        return;
+      }
+
+      // Validasi Wajib SPXID06
       if (!resiBersih.startsWith('SPXID06')) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'scannerCard');
         tampilkanStatus('error', '⛔ DITOLAK: "' + resiBersih + '" bukan resi SPXID06');
         return;
       }
 
-      if (!kurir) {
-        suaraErrorKeras();
-        tampilkanStatus('error', 'Pilih kurir tujuan terlebih dahulu!');
-        return;
-      }
-
+      // Validasi Duplikat Lokal
       const cacheKey = kurir + '::' + resiBersih;
       if (cekDuplikat && localCache.has(cacheKey)) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('duplicate', 'scannerCard');
         tampilkanStatus('duplicate', '⚠️ DUPLIKAT LOKAL: ' + resiBersih + ' sudah di-scan!');
         return;
       }
 
+      // Lolos Validasi -> Feedback Sukses Seketika
       localCache.add(cacheKey);
       suaraSuksesKeras();
       if (navigator.vibrate) navigator.vibrate(100);
+      triggerVisualFeedback('success', 'scannerCard');
 
       const waktuLokal = new Date().toLocaleTimeString('id-ID', { hour12: false });
       const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
@@ -507,6 +829,7 @@
               if (cardEl) cardEl.classList.add('synced');
             } else if (hasil.status === 'duplicate') {
               suaraErrorKeras();
+              triggerVisualFeedback('duplicate', 'scannerCard');
               if (badgeEl) { badgeEl.className = 'tag-status tag-dup'; badgeEl.textContent = 'DUPLIKAT SHEET'; }
               if (cardEl) cardEl.classList.add('dup');
               tampilkanStatus('duplicate', '⚠️ ' + hasil.message);
@@ -538,13 +861,19 @@
 
     function tampilkanStatus(tipe, pesan) {
       const box = document.getElementById('statusBox');
+      box.className = '';
+      void box.offsetWidth;
       box.className = 'status-' + tipe;
       box.textContent = pesan;
     }
 
     function tambahKeRiwayat(itemId, resi, kurir, waktu) {
       totalScan++;
-      document.getElementById('scanCounter').textContent = totalScan + ' SCAN';
+      const counterEl = document.getElementById('scanCounter');
+      counterEl.textContent = totalScan + ' SCAN';
+      counterEl.classList.add('pop');
+      setTimeout(() => counterEl.classList.remove('pop'), 200);
+
       const list = document.getElementById('historyList');
       if (totalScan === 1) list.innerHTML = '';
 
