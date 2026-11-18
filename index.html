@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SPX Express Turbo Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #070402;
+      --bg-card: rgba(18, 11, 7, 0.84);
+      --orange-neon: #ff5500;
+      --orange-bright: #ff8c00;
+      --orange-glow: rgba(255, 85, 0, 0.45);
+      --orange-dim: rgba(255, 85, 0, 0.14);
+      --green-neon: #10b981;
+      --yellow-neon: #f59e0b;
+      --red-neon: #ef4444;
+      --text-main: #f4f4f5;
+      --text-sub: #d4d4d8;
+      --border-color: rgba(255, 107, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+      margin: 0; padding: 16px; 
+      background: var(--bg-dark); 
+      color: var(--text-main); 
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* =========================================================
+       1. VIDEO BACKGROUND HUD ASLI (bg-hud.mp4.mp4) BERWARNA ORANGE
+       ========================================================= */
+    .bg-video-layer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      filter: hue-rotate(175deg) saturate(280%) brightness(0.8) contrast(1.18);
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    .bg-hud-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.3) 0%, rgba(5, 3, 2, 0.8) 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* =========================================================
+       2. MASKOT ROBOT GIF POJOK KIRI ATAS (mix-blend-mode: screen)
+       ========================================================= */
+    .robot-mascot {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      width: 90px;
+      height: auto;
+      z-index: 999;
+      pointer-events: none;
+      /* Menghilangkan background hitam pekat menjadi transparan menyatu dengan HUD */
+      mix-blend-mode: screen;
+      filter: drop-shadow(0 6px 14px rgba(255, 85, 0, 0.55));
+      animation: robotFloat 3.2s ease-in-out infinite;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .robot-mascot.robot-happy {
+      animation: robotCheer 0.55s ease;
+    }
+
+    @keyframes robotFloat {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50%      { transform: translateY(-7px) rotate(2.5deg); }
+    }
+    @keyframes robotCheer {
+      0%   { transform: scale(1) translateY(0); }
+      35%  { transform: scale(1.16) translateY(-10px) rotate(6deg); }
+      70%  { transform: scale(0.96) translateY(2px) rotate(-3deg); }
+      100% { transform: scale(1) translateY(0); }
+    }
+
+    /* =========================================================
+       3. LAYOUT & LOGO TENGAH
+       ========================================================= */
+    .container { max-width: 480px; margin: 0 auto; position: relative; z-index: 1; }
+    
+    .header { 
+      text-align: center; 
+      margin-top: 10px;
+      margin-bottom: 18px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .center-logo {
+      width: 170px;
+      max-width: 58%;
+      height: auto;
+      display: block;
+      margin: 0 auto 6px auto;
+      filter: drop-shadow(0 0 14px rgba(255, 85, 0, 0.7));
+      transition: transform 0.3s ease;
+    }
+    .header p { 
+      margin: 2px 0 0; font-size: 11px; font-weight: 700;
+      color: var(--orange-bright); letter-spacing: 1.6px; 
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+    }
+
+    /* Kartu Glassmorphism */
+    .card { 
+      background: var(--bg-card); 
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px; padding: 16px; margin-bottom: 14px; 
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 0 15px rgba(255, 85, 0, 0.06);
+      position: relative; overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--orange-neon), transparent);
+    }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    
+    select, input[type="text"] {
+      width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.88); color: var(--text-main); font-size: 15px; font-weight: 600;
+      outline: none; transition: all 0.25s ease;
+    }
+    select:focus, input[type="text"]:focus { 
+      border-color: var(--orange-neon); 
+      box-shadow: 0 0 0 3px var(--orange-dim); 
+    }
+    select.select-empty {
+      color: var(--orange-bright);
+      border-color: rgba(255, 140, 0, 0.6);
+    }
+
+    /* =========================================================
+       4. SKELETON SCREEN (SAAT MEMUAT DAFTAR KURIR)
+       ========================================================= */
+    .skeleton-box {
+      width: 100%;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(
+        110deg,
+        rgba(35, 22, 14, 0.9) 25%,
+        rgba(255, 95, 0, 0.25) 50%,
+        rgba(35, 22, 14, 0.9) 75%
+      );
+      background-size: 200% 100%;
+      border: 1px solid rgba(255, 107, 0, 0.25);
+      animation: skeletonShimmer 1.3s infinite linear;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 12px;
+      color: rgba(255, 160, 80, 0.75);
+      letter-spacing: 0.8px;
+    }
+    @keyframes skeletonShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .checkbox-row input { width: 18px; height: 18px; accent-color: var(--orange-neon); cursor: pointer; }
+    .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
+
+    /* =========================================================
+       5. KAMERA & MICRO ANIMATIONS (CORNER BRACKETS + BUTTONS)
+       ========================================================= */
+    #reader-wrapper { 
+      position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
+      background: #000; min-height: 240px; border: 1px solid var(--border-color);
+      transition: all 0.25s ease;
+    }
+    #reader { width: 100%; }
+
+    .cam-corners {
+      position: absolute;
+      inset: 12px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.35;
+      transition: opacity 0.3s ease;
+    }
+    .cam-active .cam-corners {
+      opacity: 1;
+      animation: cornerPulse 1.8s ease-in-out infinite;
+    }
+    .cam-corners span {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--orange-neon);
+      border-style: solid;
+    }
+    .cam-corners span:nth-child(1) { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+    .cam-corners span:nth-child(2) { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+    .cam-corners span:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+    .cam-corners span:nth-child(4) { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+    @keyframes cornerPulse {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(0.97); }
+    }
+
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    button {
+      padding: 13px 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; 
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      position: relative; overflow: hidden;
+    }
+    button:active:not(:disabled) { transform: scale(0.94); }
+    button:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    .btn-cam-start { background: linear-gradient(135deg, #ff7b00, #ff3d00); color: #fff; box-shadow: 0 4px 15px var(--orange-glow); }
+    .btn-cam-stop { background: rgba(0, 0, 0, 0.65); color: var(--orange-bright); border: 1px solid var(--orange-neon); }
+    .btn-torch-off { background: rgba(20, 20, 22, 0.9); color: var(--text-sub); border: 1px solid var(--border-color); }
+    .btn-torch-on { background: #fff; color: #000; box-shadow: 0 0 18px rgba(255, 255, 255, 0.8); }
+    .btn-manual { background: var(--orange-dim); color: var(--orange-bright); width: 100%; margin-top: 10px; border: 1px solid var(--orange-neon); }
+    .btn-manual:hover:not(:disabled) { background: rgba(255, 85, 0, 0.25); }
+
+    /* =========================================================
+       6. VISUAL FEEDBACK (KILATAN WARNA & GETAR SHAKE)
+       ========================================================= */
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 998;
+      opacity: 0;
+    }
+    .flash-success { animation: flashGreen 0.45s ease-out; }
+    .flash-duplicate { animation: flashYellow 0.5s ease-out; }
+    .flash-error { animation: flashRed 0.5s ease-out; }
+
+    @keyframes flashGreen {
+      0%   { opacity: 0.38; background: radial-gradient(circle, transparent 35%, rgba(16, 185, 129, 0.75) 100%); }
+      100% { opacity: 0; }
+    }
+    @keyframes flashYellow {
+      0%   { opacity: 0.42; background: radial-gradient(circle, transparent 35%, rgba(245, 158, 11, 0.8) 100%); }
+      100% { opacity: 0; }
+    }
+    @keyframes flashRed {
+      0%   { opacity: 0.45; background: radial-gradient(circle, transparent 35%, rgba(239, 68, 68, 0.85) 100%); }
+      100% { opacity: 0; }
+    }
+
+    .shake-anim {
+      animation: horizontalShake 0.42s cubic-bezier(.36,.07,.19,.97) both;
+      border-color: var(--red-neon) !important;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
+    }
+    .pulse-success-card {
+      border-color: var(--green-neon) !important;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.5) !important;
+    }
+
+    @keyframes horizontalShake {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(5px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+      40%, 60% { transform: translate3d(7px, 0, 0); }
+    }
+
+    /* Bar Status Antrean Sinkronisasi */
+    .sync-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0, 0, 0, 0.85); border: 1px solid var(--border-color); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 14px; font-size: 12px;
+      backdrop-filter: blur(6px);
+    }
+    .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #10b981; }
+    .sync-dot.busy { background: #ff6b00; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    #statusBox {
+      display: none; padding: 12px; border-radius: 12px; margin-bottom: 14px;
+      font-size: 13px; font-weight: 700; text-align: center;
+      backdrop-filter: blur(6px);
+      animation: statusPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes statusPop {
+      0%   { transform: scale(0.92); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .status-success { display: block !important; background: rgba(16, 185, 129, 0.22); border: 1px solid #10b981; color: #34d399; }
+    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
+    .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
+
+    /* Riwayat & Micro Animation Slide-In */
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .badge { background: var(--orange-neon); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; transition: transform 0.2s ease; }
+    .badge.pop { transform: scale(1.22); }
+    .history-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    
+    .history-item {
+      background: rgba(0, 0, 0, 0.82); padding: 10px 14px; border-radius: 10px; 
+      border-left: 3px solid #f59e0b;
+      display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+      animation: slideInItem 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes slideInItem {
+      0%   { opacity: 0; transform: translateY(-12px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .history-item.synced { border-left-color: #10b981; }
+    .history-item.dup { border-left-color: #ef4444; opacity: 0.72; }
+    .history-resi { font-weight: 700; color: #fff; font-family: monospace; font-size: 14px; }
+    .history-meta { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
+    .tag-status { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+    .tag-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .tag-dup { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    @media (max-width: 520px) {
+      body { padding: 10px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+      .container { width: 100%; max-width: 480px; }
+      .header { margin-top: 6px; margin-bottom: 12px; }
+      .center-logo { width: 145px; }
+      .card { padding: 13px; margin-bottom: 11px; border-radius: 14px; }
+      #reader-wrapper { min-height: 210px; }
+      .btn-group { gap: 8px; margin-top: 10px; }
+      button { min-height: 44px; padding: 11px 8px; font-size: 12px; }
+      select, input[type="text"] { min-height: 46px; font-size: 16px; }
+      .robot-mascot { width: 62px; top: 5px; left: 5px; }
+      .history-item { gap: 8px; align-items: flex-start; }
+      .history-resi { overflow-wrap: anywhere; }
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Video Background HUD Asli (bg-hud.mp4.mp4) Berwarna Orange -->
+  <video class="bg-video-layer" autoplay loop muted playsinline>
+    <source src="bg-hud.mp4.mp4" type="video/mp4">
+  </video>
+  <div class="bg-hud-overlay"></div>
+
+  <!-- Layer Kilatan Visual Feedback -->
+  <div id="flashOverlay" class="flash-overlay"></div>
+
+  <!-- Maskot Robot GIF Pojok Kiri Atas (robot-spx.gif.gif) -->
+  <img src="robot-spx.gif.gif" alt="SPX Robot" id="robotMascot" class="robot-mascot">
+
+  <div class="container">
+    <!-- Logo SPX Express di Tengah -->
+    <div class="header">
+      <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
+      <p>TURBO SCANNER // SPXID06 + ID</p>
+    </div>
+
+    <!-- Kartu Pemilihan Kurir dengan Skeleton Screen -->
+    <div class="card" id="kurirCard">
+      <label for="kurirSelect">Target Database (Kurir)</label>
+      
+      <!-- Skeleton Screen saat loading -->
+      <div id="kurirSkeleton" class="skeleton-box">
+        MENGHUBUNGKAN DATABASE KURIR...
+      </div>
+
+      <!-- Dropdown Kurir (Tersembunyi sampai data siap) -->
+      <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
+        <option value="">-- PILIH NAMA KURIR --</option>
+      </select>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="cekDuplikat" checked>
+        <label for="cekDuplikat">Blokir duplikasi resi otomatis</label>
+      </div>
+    </div>
+
+    <!-- Indikator Antrean Real-Time -->
+    <div class="sync-bar">
+      <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
+      <div style="color:var(--orange-bright); font-weight:700;" id="queueCount">Antrean: 0</div>
+    </div>
+
+    <div id="statusBox"></div>
+
+    <!-- Kartu Kamera Scanner -->
+    <div class="card" id="scannerCard">
+      <div id="reader-wrapper">
+        <div class="cam-corners">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div id="reader"></div>
+      </div>
+      <div class="btn-group">
+        <button id="btnKamera" class="btn-cam-start" onclick="toggleKamera()">📷 ACTIVATE CAM</button>
+        <button id="btnSenter" class="btn-torch-off" onclick="toggleSenter()" disabled>🔦 ILLUMINATE</button>
+      </div>
+    </div>
+
+    <!-- Kartu Input Manual -->
+    <div class="card">
+      <label for="manualInput">Input Manual (Awalan SPXID06 atau ID)</label>
+      <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789 atau ID123456789">
+      <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
+    </div>
+
+    <!-- Kartu Riwayat Transmisi -->
+    <div class="card">
+      <div class="history-header">
+        <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
+        <span class="badge" id="scanCounter">0 SCAN</span>
+      </div>
+      <div class="history-list" id="historyList">
+        <div style="text-align:center; color:var(--text-sub); font-size:12px; padding:18px; opacity:0.6;">NO DATA RECORDED</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
+
+    // Daftar Whitelist 32 Nama Kurir Resmi (Terurut Abjad A-Z)
+    const WHITELIST_KURIR = [
+      'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
+      'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
+      'SAHRUL ANAM', 'KHAIRUDDIN', 'HAMDANI', 'NURUL ANWAR',
+      'MASRUDI', 'ABD MAJID', 'SUMARI', 'WASIS BUDIONO',
+      'ARMAN SUSIANTO', 'ABDURRAHMAN', 'MOH SAHRIL', 'DWI AGUSTIONO',
+      'MIFTAHUL GHANI', 'IRVAN FAUZY', 'MUHAMMAD AINUS SYAMSI',
+      'MUHAMMAD NURULLAH AJI SAPUTRA', 'MOHAMMAD HARIS', 'SANDI AGUSTINO',
+      'EDY MUCHLAS', 'MOH. MAULANA TAQWIM', 'ABD MUTHALIB',
+      'MOH. TRIOWAN KURNIA', 'AMIRIL MUKMININ'
+    ].sort((a, b) => a.localeCompare(b, 'id'));
+
+    let html5QrCode = null;
+    let isScanning = false;
+    let isTorchOn = false;
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
+    let totalScan = 0;
+    let audioCtx = null;
+
+    const QUEUE_STORAGE_KEY = 'spx_turbo_scanner_queue_v2';
+    const localCache = new Set();
+    let uploadQueue = [];
+    let isSyncing = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    // Visual Feedback Helper (Kilatan Layar, Getar Shake, & Reaksi Robot)
+    function triggerVisualFeedback(type, targetCardId) {
+      const flash = document.getElementById('flashOverlay');
+      flash.className = 'flash-overlay';
+      void flash.offsetWidth;
+      flash.classList.add('flash-' + type);
+
+      if (type === 'success') {
+        const robot = document.getElementById('robotMascot');
+        robot.classList.remove('robot-happy');
+        void robot.offsetWidth;
+        robot.classList.add('robot-happy');
+
+        const scanCard = document.getElementById('scannerCard');
+        scanCard.classList.add('pulse-success-card');
+        setTimeout(() => scanCard.classList.remove('pulse-success-card'), 450);
+      } else {
+        const card = document.getElementById(targetCardId || 'scannerCard');
+        card.classList.remove('shake-anim');
+        void card.offsetWidth;
+        card.classList.add('shake-anim');
+        setTimeout(() => card.classList.remove('shake-anim'), 450);
+      }
+    }
+
+    function onKurirChange() {
+      const select = document.getElementById('kurirSelect');
+      if (select.value) {
+        select.classList.remove('select-empty');
+        document.getElementById('statusBox').style.display = 'none';
+      } else {
+        select.classList.add('select-empty');
+      }
+    }
+
+    window.onload = async function() {
+      html5QrCode = new Html5Qrcode("reader");
+      const bgVid = document.querySelector('.bg-video-layer');
+      if (bgVid) bgVid.play().catch(() => {});
+
+      pulihkanAntrean();
+
+      const skeleton = document.getElementById('kurirSkeleton');
+      const select = document.getElementById('kurirSelect');
+
+      try {
+        const response = await fetch(WEB_APP_URL);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const res = await response.json();
+        let daftarKurir = [];
+
+        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          const allowedSet = new Set(WHITELIST_KURIR.map(n => n.toUpperCase()));
+          daftarKurir = res.data.map(n => String(n).trim())
+            .filter(n => allowedSet.has(n.toUpperCase()))
+            .sort((a, b) => a.localeCompare(b, 'id'));
+        }
+
+        if (daftarKurir.length === 0) daftarKurir = WHITELIST_KURIR;
+        isiDropdownKurir(select, daftarKurir);
+      } catch (err) {
+        isiDropdownKurir(select, WHITELIST_KURIR);
+      } finally {
+        skeleton.style.display = 'none';
+        select.style.display = 'block';
+      }
+
+      updateQueueUI();
+      if (uploadQueue.length) updateSyncStatus(true, 'Memulihkan ' + uploadQueue.length + ' antrean...');
+      setInterval(prosesAntreanBatch, 2500);
+    };
+
+    function isiDropdownKurir(select, daftarKurir) {
+      select.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '-- PILIH NAMA KURIR --';
+      select.appendChild(placeholder);
+      daftarKurir.forEach(kurir => {
+        const opt = document.createElement('option');
+        opt.value = kurir;
+        opt.textContent = kurir;
+        select.appendChild(opt);
+      });
+    }
+
+    function simpanAntreanLokal() {
+      try {
+        localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(uploadQueue));
+        return true;
+      } catch (err) {
+        updateSyncStatus(true, 'Peringatan: antrean tidak dapat disimpan di perangkat.');
+        return false;
+      }
+    }
+
+    function pulihkanAntrean() {
+      try {
+        const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        uploadQueue = Array.isArray(parsed) ? parsed.filter(item =>
+          item && typeof item.id === 'string' &&
+          typeof item.kurir === 'string' && typeof item.resi === 'string'
+        ) : [];
+
+        uploadQueue.forEach(item => {
+          localCache.add(item.kurir + '::' + item.resi);
+          tambahKeRiwayat(item.id, item.resi, item.kurir, item.waktuLokal || '--:--:--', true);
+        });
+      } catch (err) {
+        uploadQueue = [];
+        localCache.clear();
+        tampilkanStatus('error', 'Antrean lokal tidak dapat dibaca. Periksa penyimpanan browser.');
+      }
+    }
+    async function toggleKamera() {
+      initAudio();
+      const kurir = document.getElementById('kurirSelect').value;
+
+      if (!isScanning && !kurir) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
+        document.getElementById('kurirSelect').focus();
+        return;
+      }
+
+      const btnCam = document.getElementById('btnKamera');
+      const btnTorch = document.getElementById('btnSenter');
+      const wrapper = document.getElementById('reader-wrapper');
+
+      if (!isScanning) {
+        try {
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            {
+              fps: 20,
+              aspectRatio: 1.333334,
+              qrbox: function(viewfinderWidth, viewfinderHeight) {
+                return {
+                  width: Math.floor(viewfinderWidth * 0.96),
+                  height: Math.floor(viewfinderHeight * 0.96)
+                };
+              }
+            },
+            onScanSuccess,
+            () => {}
+          );
+          isScanning = true;
+          wrapper.classList.add('cam-active');
+          btnCam.textContent = '⏹ DEACTIVATE CAM';
+          btnCam.className = 'btn-cam-stop';
+          btnTorch.disabled = false;
+          document.getElementById('statusBox').style.display = 'none';
+        } catch (err) {
+          tampilkanStatus('error', 'CAMERA ACCESS DENIED: ' + err);
+        }
+      } else {
+        if (isTorchOn) await setTorchState(false);
+        await html5QrCode.stop();
+        isScanning = false;
+        wrapper.classList.remove('cam-active');
+        btnCam.textContent = '📷 ACTIVATE CAM';
+        btnCam.className = 'btn-cam-start';
+        btnTorch.disabled = true;
+      }
+    }
+
+    async function toggleSenter() {
+      if (!isScanning) return;
+      await setTorchState(!isTorchOn);
+    }
+
+    async function setTorchState(state) {
+      const btnTorch = document.getElementById('btnSenter');
+      try {
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: state }] });
+        isTorchOn = state;
+        btnTorch.textContent = isTorchOn ? '🔦 LIGHT: ON' : '🔦 ILLUMINATE';
+        btnTorch.className = isTorchOn ? 'btn-torch-on' : 'btn-torch-off';
+      } catch (err) {
+        tampilkanStatus('error', 'FLASHLIGHT NOT SUPPORTED ON THIS DEVICE.');
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      const now = Date.now();
+      if (decodedText === lastScannedCode && (now - lastScannedTime) < 1200) return;
+      lastScannedCode = decodedText;
+      lastScannedTime = now;
+
+      masukkanKeAntrean(decodedText);
+    }
+
+    function kirimManual() {
+      initAudio();
+      const input = document.getElementById('manualInput');
+      if (!input.value.trim()) {
+        suaraErrorKeras();
+        triggerVisualFeedback('error', 'scannerCard');
+        tampilkanStatus('error', 'Masukkan nomor resi terlebih dahulu.');
+        return;
+      }
+      masukkanKeAntrean(input.value.trim());
+      input.value = '';
+    }
+
+    function masukkanKeAntrean(nomorResi) {
+      const kurir = document.getElementById('kurirSelect').value;
+      const cekDuplikat = document.getElementById('cekDuplikat').checked;
+      const resiBersih = String(nomorResi).trim().toUpperCase();
+
+      if (!kurir) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
+        return;
+      }
+
+      if (!(resiBersih.startsWith('SPXID06') || resiBersih.startsWith('ID'))) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'scannerCard');
+        tampilkanStatus('error', '⛔ DITOLAK: resi harus diawali SPXID06 atau ID.');
+        return;
+      }
+
+      const cacheKey = kurir + '::' + resiBersih;
+      if (cekDuplikat && localCache.has(cacheKey)) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('duplicate', 'scannerCard');
+        tampilkanStatus('duplicate', '⚠️ DUPLIKAT LOKAL: ' + resiBersih + ' sudah di-scan!');
+        return;
+      }
+
+      localCache.add(cacheKey);
+      suaraSuksesKeras();
+      if (navigator.vibrate) navigator.vibrate(100);
+      triggerVisualFeedback('success', 'scannerCard');
+
+      const waktuLokal = new Date().toLocaleTimeString('id-ID', { hour12: false });
+      const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+      uploadQueue.push({
+        id: itemId, // ID lokal untuk mencocokkan respons UI, bukan ID transaksi server.
+        kurir: kurir,
+        resi: resiBersih,
+        cekDuplikat: cekDuplikat,
+        waktuLokal: waktuLokal,
+        dibuatPada: Date.now()
+      });
+
+      simpanAntreanLokal();
+      updateQueueUI();
+      tampilkanStatus('success', '⚡ MASUK ANTREAN: ' + resiBersih);
+      tambahKeRiwayat(itemId, resiBersih, kurir, waktuLokal);
+    }
+
+    async function prosesAntreanBatch() {
+      if (isSyncing || uploadQueue.length === 0) return;
+
+      isSyncing = true;
+      const batchToSend = uploadQueue.slice(0, 25);
+      updateSyncStatus(true, 'Mengirim ' + batchToSend.length + ' data...');
+
+      try {
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ items: batchToSend })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const res = await response.json();
+
+        if (res.status !== 'success' || !Array.isArray(res.results)) {
+          throw new Error(res.message || 'Respons server tidak valid.');
+        }
+
+        const resultById = new Map();
+        res.results.forEach(result => {
+          if (result && result.id) resultById.set(String(result.id), result);
+        });
+
+        const completedIds = new Set();
+        batchToSend.forEach(item => {
+          const hasil = resultById.get(String(item.id));
+          if (!hasil) {
+            setRiwayatStatus(item.id, 'tag-pending', 'MENUNGGI ULANG');
+            return;
+          }
+
+          const badgeEl = document.getElementById('status-' + item.id);
+          const cardEl = document.getElementById(item.id);
+
+          if (hasil.status === 'success') {
+            completedIds.add(item.id);
+            if (badgeEl) {
+              badgeEl.className = 'tag-status tag-ok';
+              badgeEl.textContent = 'TERSIMPAN #' + hasil.no;
+            }
+            if (cardEl) cardEl.classList.add('synced');
+          } else if (hasil.status === 'duplicate') {
+            completedIds.add(item.id);
+            if (badgeEl) {
+              badgeEl.className = 'tag-status tag-dup';
+              badgeEl.textContent = 'DUPLIKAT SHEET';
+            }
+            if (cardEl) cardEl.classList.add('dup');
+          } else {
+            if (badgeEl) {
+              badgeEl.className = 'tag-status tag-pending';
+              badgeEl.textContent = 'GAGAL - COBA ULANG';
+            }
+            if (hasil.message) tampilkanStatus('error', 'Gagal ' + item.resi + ': ' + hasil.message);
+          }
+        });
+
+        if (completedIds.size) {
+          uploadQueue = uploadQueue.filter(item => !completedIds.has(item.id));
+          completedIds.forEach(id => {
+            const item = batchToSend.find(x => x.id === id);
+            if (item) localCache.delete(item.kurir + '::' + item.resi);
+          });
+          simpanAntreanLokal();
+        }
+
+        updateSyncStatus(uploadQueue.length > 0,
+          uploadQueue.length ? uploadQueue.length + ' data menunggu / perlu dicoba ulang' : 'Semua Data Tersinkron');
+
+      } catch (err) {
+        updateSyncStatus(true, 'Koneksi bermasalah. Antrean dipertahankan untuk dicoba ulang.');
+      } finally {
+        isSyncing = false;
+        updateQueueUI();
+      }
+    }
+
+    function setRiwayatStatus(itemId, className, label) {
+      const badge = document.getElementById('status-' + itemId);
+      if (badge) {
+        badge.className = 'tag-status ' + className;
+        badge.textContent = label;
+      }
+    }
+    function updateQueueUI() {
+      document.getElementById('queueCount').textContent = 'Antrean: ' + uploadQueue.length;
+    }
+
+    function updateSyncStatus(isBusy, text) {
+      const dot = document.getElementById('syncDot');
+      dot.className = isBusy ? 'sync-dot busy' : 'sync-dot';
+      document.getElementById('syncText').textContent = text;
+    }
+
+    function tampilkanStatus(tipe, pesan) {
+      const box = document.getElementById('statusBox');
+      box.className = '';
+      void box.offsetWidth;
+      box.className = 'status-' + tipe;
+      box.textContent = pesan;
+    }
+
+    function tambahKeRiwayat(itemId, resi, kurir, waktu, restored) {
+      totalScan++;
+      const counterEl = document.getElementById('scanCounter');
+      counterEl.textContent = totalScan + ' SCAN';
+
+      const list = document.getElementById('historyList');
+      if (totalScan === 1) list.innerHTML = '';
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.id = itemId;
+
+      const info = document.createElement('div');
+      const resiEl = document.createElement('div');
+      resiEl.className = 'history-resi';
+      resiEl.textContent = resi;
+
+      const meta = document.createElement('div');
+      meta.className = 'history-meta';
+      meta.appendChild(document.createTextNode('KURIR: '));
+      const courier = document.createElement('b');
+      courier.style.color = 'var(--orange-bright)';
+      courier.textContent = kurir;
+      meta.appendChild(courier);
+      meta.appendChild(document.createTextNode(' • ' + waktu));
+
+      info.appendChild(resiEl);
+      info.appendChild(meta);
+
+      const badge = document.createElement('span');
+      badge.className = 'tag-status tag-pending';
+      badge.id = 'status-' + itemId;
+      badge.textContent = restored ? 'ANTREAN DIPULIHKAN' : 'MENUNGGU KIRIM';
+
+      item.appendChild(info);
+      item.appendChild(badge);
+      list.prepend(item);
+    }
+    // SISTEM AUDIO SUPER NYARING (MAX GAIN + COMPRESSOR)
+    function suaraSuksesKeras() {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-10, now);
+        compressor.knee.setValueAtTime(0, now);
+        compressor.ratio.setValueAtTime(20, now);
+        compressor.attack.setValueAtTime(0, now);
+        compressor.release.setValueAtTime(0.1, now);
+        compressor.connect(audioCtx.destination);
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.connect(compressor);
+
+        const osc1 = audioCtx.createOscillator();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(1500, now);
+        osc1.frequency.setValueAtTime(2400, now + 0.08);
+        osc1.connect(masterGain);
+
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(3000, now);
+        osc2.frequency.setValueAtTime(3600, now + 0.08);
+        osc2.connect(masterGain);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.18);
+        osc2.stop(now + 0.18);
+      } catch (e) {}
+    }
+
+    function suaraErrorKeras() {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.connect(audioCtx.destination);
+
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.setValueAtTime(220, now + 0.18);
+
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.gain.setValueAtTime(0.0, now + 0.14);
+        masterGain.gain.setValueAtTime(1.0, now + 0.18);
+
+        osc.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } catch (e) {}
+    }
+
+    window.addEventListener('pagehide', function () {
+      simpanAntreanLokal();
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+      simpanAntreanLokal();
+      if (uploadQueue.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  </script>
+</body>
+</html>
