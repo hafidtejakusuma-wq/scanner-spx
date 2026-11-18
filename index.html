@@ -147,11 +147,11 @@
     /* =========================================================
        2. MASKOT ROBOT GIF POJOK KIRI ATAS (mix-blend-mode: screen)
        ========================================================= */
-    .robot-mascot {
+    .robot-header.gif {
       position: fixed;
       top: 8px;
       left: 8px;
-      width: 90px;
+      width: 120px;
       height: auto;
       z-index: 999;
       pointer-events: auto;
@@ -162,10 +162,10 @@
       animation: robotFloat 3.2s ease-in-out infinite;
       transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .robot-mascot.robot-happy {
+    .robot-header.gif.robot-happy {
       animation: robotCheer 0.55s ease;
     }
-    .robot-mascot:focus-visible {
+    .robot-header.gif:focus-visible {
       outline: 2px solid #67e8f9;
       outline-offset: 4px;
       border-radius: 12px;
@@ -197,7 +197,7 @@
       justify-content: center;
     }
     .center-logo {
-      width: 170px;
+      width: 200px;
       max-width: 58%;
       height: auto;
       display: block;
@@ -509,9 +509,9 @@
   <!-- Layer Kilatan Visual Feedback -->
   <div id="flashOverlay" class="flash-overlay"></div>
 
-  <!-- Maskot Robot GIF Pojok Kiri Atas (robot-spx.gif.gif) -->
-  <img src="robot-spx.gif.gif" alt="SPX Robot - klik untuk arsipkan data" id="robotMascot"
-       class="robot-mascot" role="button" tabindex="0" aria-label="Pindahkan data 32 kurir ke Resi History">
+  <!-- Maskot Robot GIF Pojok Kiri Atas (robot-header.gif) -->
+  <img src="" alt="SPX Robot - klik untuk arsipkan data" id="robot-header.gif"
+       class="robot-header.gif" role="button" tabindex="0" aria-label="Pindahkan data 32 kurir ke Resi History">
 
   <!-- Dialog arsip data 32 sheet kurir -->
   <div id="archiveModal" class="archive-modal" hidden>
@@ -533,8 +533,8 @@
   <div class="container">
     <!-- Logo SPX Express di Tengah -->
     <div class="header">
-      <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
-      <p>TURBO SCANNER // SPXID06 ONLY</p>
+      <img src="logo-header.png" alt="SPX Express" class="center-logo">
+      <p>SANGKAPURA HUB</p>
     </div>
 
     <!-- Kartu Pemilihan Kurir dengan Skeleton Screen -->
@@ -646,7 +646,7 @@
       flash.classList.add('flash-' + type);
 
       if (type === 'success') {
-        const robot = document.getElementById('robotMascot');
+        const robot = document.getElementById('robot-header.gif');
         robot.classList.remove('robot-happy');
         void robot.offsetWidth;
         robot.classList.add('robot-happy');
@@ -720,7 +720,7 @@
         select.style.display = 'block';
       }
 
-      const robot = document.getElementById('robotMascot');
+      const robot = document.getElementById('robot-header.gif');
       robot.addEventListener('click', bukaDialogArsip);
       robot.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' || event.key === ' ') {
