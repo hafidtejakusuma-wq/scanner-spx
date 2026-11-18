@@ -33,8 +33,6 @@
 
     /* =========================================================
        1. CYBER RAINBOW HUD
-       Video asli tetap bergerak, warna multicolor tampil bersamaan.
-       Tidak menggunakan lapisan gelap di atas video.
        ========================================================= */
     .bg-video-layer {
       position: fixed;
@@ -125,7 +123,6 @@
       filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.55));
       transition: transform 0.3s ease;
     }
-
 
     /* Dialog konfirmasi dan password untuk arsip data */
     .archive-modal {
@@ -229,7 +226,7 @@
     }
 
     /* =========================================================
-       4. SKELETON SCREEN (SAAT MEMUAT DAFTAR KURIR)
+       4. SKELETON SCREEN
        ========================================================= */
     .skeleton-box {
       width: 100%;
@@ -261,7 +258,7 @@
     .checkbox-row label { margin: 0; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
 
     /* =========================================================
-       5. KAMERA & MICRO ANIMATIONS (CORNER BRACKETS + BUTTONS)
+       5. KAMERA & MICRO ANIMATIONS
        ========================================================= */
     #reader-wrapper { 
       position: relative; width: 100%; border-radius: 14px; overflow: hidden; 
@@ -317,7 +314,7 @@
     .btn-manual:hover:not(:disabled) { background: rgba(255, 85, 0, 0.25); }
 
     /* =========================================================
-       6. VISUAL FEEDBACK (KILATAN WARNA & GETAR SHAKE)
+       6. VISUAL FEEDBACK
        ========================================================= */
     .flash-overlay {
       position: fixed;
@@ -424,20 +421,16 @@
       .history-item { gap: 8px; align-items: flex-start; }
       .history-resi { overflow-wrap: anywhere; }
     }
-
   </style>
 </head>
 <body>
-  <!-- Video background: nama file sesuai repository GitHub -->
   <video class="bg-video-layer" autoplay loop muted playsinline>
     <source src="bg-hud.mp4.mp4" type="video/mp4">
   </video>
   <div class="bg-rainbow-overlay" aria-hidden="true"></div>
 
-  <!-- Layer Kilatan Visual Feedback -->
   <div id="flashOverlay" class="flash-overlay"></div>
 
-  <!-- Dialog arsip data: konfirmasi dahulu, lalu verifikasi password -->
   <div id="archiveModal" class="archive-modal" hidden>
     <div class="archive-dialog" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
       <h2 id="archiveTitle">KONFIRMASI PEMINDAHAN DATA</h2>
@@ -454,25 +447,18 @@
     </div>
   </div>
 
-
   <div class="container">
-    <!-- Header robot dan logo SPX -->
     <div class="header">
       <img src="robot-header.gif" alt="SPX Robot - klik untuk arsipkan data" id="robotMascot"
            class="robot-mascot" role="button" tabindex="0" aria-label="Arsipkan data 32 kurir ke Resi History">
       <img src="logo-header.png" alt="SPX Express" class="center-logo">
     </div>
 
-    <!-- Kartu Pemilihan Kurir dengan Skeleton Screen -->
     <div class="card" id="kurirCard">
       <label for="kurirSelect">Target Database (Kurir)</label>
-      
-      <!-- Skeleton Screen saat loading -->
       <div id="kurirSkeleton" class="skeleton-box">
         MENGHUBUNGKAN DATABASE KURIR...
       </div>
-
-      <!-- Dropdown Kurir (Tersembunyi sampai data siap) -->
       <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
         <option value="">-- PILIH NAMA KURIR --</option>
       </select>
@@ -483,7 +469,6 @@
       </div>
     </div>
 
-    <!-- Indikator Antrean Real-Time -->
     <div class="sync-bar">
       <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
       <div style="color:var(--orange-bright); font-weight:700;" id="queueCount">Antrean: 0</div>
@@ -491,7 +476,6 @@
 
     <div id="statusBox"></div>
 
-    <!-- Kartu Kamera Scanner -->
     <div class="card" id="scannerCard">
       <div id="reader-wrapper">
         <div class="cam-corners">
@@ -505,14 +489,12 @@
       </div>
     </div>
 
-    <!-- Kartu Input Manual -->
     <div class="card">
       <label for="manualInput">Input Manual (Awalan SPXID06 atau ID)</label>
       <input type="text" id="manualInput" placeholder="Contoh: SPXID06123456789 atau ID123456789">
       <button class="btn-manual" onclick="kirimManual()">TRANSMIT DATA</button>
     </div>
 
-    <!-- Kartu Riwayat Transmisi -->
     <div class="card">
       <div class="history-header">
         <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
@@ -527,7 +509,10 @@
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
 
-    // Daftar Whitelist 32 Nama Kurir Resmi (Terurut Abjad A-Z)
+    // Konfigurasi Antrean & Percobaan Ulang
+    const SYNC_INTERVAL_MS = 2500;   // Interval pengiriman 2,5 detik
+    const MAX_RETRY_PER_ITEM = 50;   // Maksimal 50 kali coba ulang untuk gangguan jaringan/server sibuk
+
     const WHITELIST_KURIR = [
       'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
       'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
@@ -563,7 +548,6 @@
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    // Visual Feedback Helper (Kilatan Layar, Getar Shake, & Reaksi Robot)
     function triggerVisualFeedback(type, targetCardId) {
       const flash = document.getElementById('flashOverlay');
       flash.className = 'flash-overlay';
@@ -646,7 +630,7 @@
 
       updateQueueUI();
       if (uploadQueue.length) updateSyncStatus(true, 'Memulihkan ' + uploadQueue.length + ' antrean...');
-      setInterval(prosesAntreanBatch, 2500);
+      setInterval(prosesAntreanBatch, SYNC_INTERVAL_MS);
     };
 
     function isiDropdownKurir(select, daftarKurir) {
@@ -680,7 +664,10 @@
         uploadQueue = Array.isArray(parsed) ? parsed.filter(item =>
           item && typeof item.id === 'string' &&
           typeof item.kurir === 'string' && typeof item.resi === 'string'
-        ) : [];
+        ).map(item => ({
+          ...item,
+          retryCount: Number(item.retryCount) || 0
+        })) : [];
 
         uploadQueue.forEach(item => {
           localCache.add(item.kurir + '::' + item.resi);
@@ -692,6 +679,7 @@
         tampilkanStatus('error', 'Antrean lokal tidak dapat dibaca. Periksa penyimpanan browser.');
       }
     }
+
     async function toggleKamera() {
       initAudio();
       const kurir = document.getElementById('kurirSelect').value;
@@ -828,12 +816,13 @@
       const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 
       uploadQueue.push({
-        id: itemId, // ID lokal untuk mencocokkan respons UI, bukan ID transaksi server.
+        id: itemId,
         kurir: kurir,
         resi: resiBersih,
         cekDuplikat: cekDuplikat,
         waktuLokal: waktuLokal,
-        dibuatPada: Date.now()
+        dibuatPada: Date.now(),
+        retryCount: 0
       });
 
       simpanAntreanLokal();
@@ -858,6 +847,11 @@
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const res = await response.json();
 
+        // Jika server sibuk (tryLock 10000 habis), lempar ke catch agar retryCount bertambah
+        if (res.status === 'retry') {
+          throw new Error(res.message || 'Server sibuk (antrean penuh).');
+        }
+
         if (res.status !== 'success' || !Array.isArray(res.results)) {
           throw new Error(res.message || 'Respons server tidak valid.');
         }
@@ -870,13 +864,23 @@
         const completedIds = new Set();
         batchToSend.forEach(item => {
           const hasil = resultById.get(String(item.id));
-          if (!hasil) {
-            setRiwayatStatus(item.id, 'tag-pending', 'MENUNGGI ULANG');
-            return;
-          }
-
           const badgeEl = document.getElementById('status-' + item.id);
           const cardEl = document.getElementById(item.id);
+
+          if (!hasil) {
+            item.retryCount = (item.retryCount || 0) + 1;
+            if (item.retryCount >= MAX_RETRY_PER_ITEM) {
+              completedIds.add(item.id);
+              if (badgeEl) {
+                badgeEl.className = 'tag-status tag-dup';
+                badgeEl.textContent = 'GAGAL (' + MAX_RETRY_PER_ITEM + 'x)';
+              }
+              if (cardEl) cardEl.classList.add('dup');
+            } else {
+              setRiwayatStatus(item.id, 'tag-pending', 'ULANG (' + item.retryCount + '/' + MAX_RETRY_PER_ITEM + ')');
+            }
+            return;
+          }
 
           if (hasil.status === 'success') {
             completedIds.add(item.id);
@@ -892,12 +896,32 @@
               badgeEl.textContent = 'DUPLIKAT SHEET';
             }
             if (cardEl) cardEl.classList.add('dup');
-          } else {
+          } else if (hasil.status === 'invalid') {
+            // Error validasi permanen: langsung keluarkan dari antrean tanpa menghabiskan retryCount
+            completedIds.add(item.id);
             if (badgeEl) {
-              badgeEl.className = 'tag-status tag-pending';
-              badgeEl.textContent = 'GAGAL - COBA ULANG';
+              badgeEl.className = 'tag-status tag-dup';
+              badgeEl.textContent = 'DITOLAK SERVER';
             }
-            if (hasil.message) tampilkanStatus('error', 'Gagal ' + item.resi + ': ' + hasil.message);
+            if (cardEl) cardEl.classList.add('dup');
+            tampilkanStatus('error', '⛔ Ditolak permanen (' + item.resi + '): ' + (hasil.message || 'Data tidak valid'));
+          } else {
+            // Error sementara pada item spesifik
+            item.retryCount = (item.retryCount || 0) + 1;
+            if (item.retryCount >= MAX_RETRY_PER_ITEM) {
+              completedIds.add(item.id);
+              if (badgeEl) {
+                badgeEl.className = 'tag-status tag-dup';
+                badgeEl.textContent = 'GAGAL (' + MAX_RETRY_PER_ITEM + 'x)';
+              }
+              if (cardEl) cardEl.classList.add('dup');
+            } else {
+              if (badgeEl) {
+                badgeEl.className = 'tag-status tag-pending';
+                badgeEl.textContent = 'GAGAL (' + item.retryCount + '/' + MAX_RETRY_PER_ITEM + ')';
+              }
+              if (hasil.message) tampilkanStatus('error', 'Gagal ' + item.resi + ': ' + hasil.message);
+            }
           }
         });
 
@@ -907,14 +931,45 @@
             const item = batchToSend.find(x => x.id === id);
             if (item) localCache.delete(item.kurir + '::' + item.resi);
           });
-          simpanAntreanLokal();
         }
+        simpanAntreanLokal();
 
         updateSyncStatus(uploadQueue.length > 0,
           uploadQueue.length ? uploadQueue.length + ' data menunggu / perlu dicoba ulang' : 'Semua Data Tersinkron');
 
       } catch (err) {
-        updateSyncStatus(true, 'Koneksi bermasalah. Antrean dipertahankan untuk dicoba ulang.');
+        // Koneksi putus / server sibuk (retry): tambah retryCount seluruh batch
+        const droppedIds = new Set();
+        batchToSend.forEach(item => {
+          item.retryCount = (item.retryCount || 0) + 1;
+          const badgeEl = document.getElementById('status-' + item.id);
+          const cardEl = document.getElementById(item.id);
+
+          if (item.retryCount >= MAX_RETRY_PER_ITEM) {
+            droppedIds.add(item.id);
+            if (badgeEl) {
+              badgeEl.className = 'tag-status tag-dup';
+              badgeEl.textContent = 'GAGAL KIRIM (' + MAX_RETRY_PER_ITEM + 'x)';
+            }
+            if (cardEl) cardEl.classList.add('dup');
+          } else if (badgeEl) {
+            badgeEl.className = 'tag-status tag-pending';
+            badgeEl.textContent = 'ANTRE ULANG (' + item.retryCount + '/' + MAX_RETRY_PER_ITEM + ')';
+          }
+        });
+
+        if (droppedIds.size) {
+          uploadQueue = uploadQueue.filter(item => !droppedIds.has(item.id));
+          droppedIds.forEach(id => {
+            const item = batchToSend.find(x => x.id === id);
+            if (item) localCache.delete(item.kurir + '::' + item.resi);
+          });
+          tampilkanStatus('error', droppedIds.size + ' resi dihapus dari antrean karena gagal terkirim ' + MAX_RETRY_PER_ITEM + ' kali.');
+        }
+
+        simpanAntreanLokal();
+        updateSyncStatus(uploadQueue.length > 0,
+          uploadQueue.length ? 'Koneksi/Server sibuk. Mencoba ulang otomatis...' : 'Antrean selesai');
       } finally {
         isSyncing = false;
         updateQueueUI();
@@ -1080,7 +1135,7 @@
       item.appendChild(badge);
       list.prepend(item);
     }
-    // SISTEM AUDIO SUPER NYARING (MAX GAIN + COMPRESSOR)
+
     function suaraSuksesKeras() {
       try {
         initAudio();
