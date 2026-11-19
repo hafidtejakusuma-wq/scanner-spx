@@ -27,7 +27,7 @@
       margin: 0; padding: 0;
       width: 100%;
       height: 100dvh;
-      overflow: hidden; /* Terkunci 1 layar penuh HP tanpa scroll */
+      overflow: hidden;
       background: var(--bg-dark); 
       color: var(--text-main); 
     }
@@ -197,7 +197,7 @@
     .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
     .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
 
-    /* 5. KAMERA FLEKSIBEL OTOMATIS MENGIKUTI LAYAR HP */
+    /* KAMERA FLEKSIBEL OTOMATIS MENGIKUTI LAYAR HP */
     #reader-wrapper { 
       position: relative; width: 100%; border-radius: 12px; overflow: hidden; 
       background: #000; 
@@ -273,7 +273,7 @@
       40%, 60% { transform: translate3d(7px, 0, 0); }
     }
 
-    /* LOG TRANSMISI (Ukuran standar tetap dipertahankan lega mengisi sisa ruang layar) */
+    /* LOG TRANSMISI */
     .history-card {
       flex: 1;
       min-height: 130px;
@@ -334,10 +334,10 @@
   <div id="flashOverlay" class="flash-overlay"></div>
 
   <div class="container">
-    <!-- HEADER: Robot 120x100 menempel kiri huruf S Logo SPX 200x70 -->
+    <!-- HEADER: Menggunakan file robot-header.gif dan logo-header.png sesuai isi repositori GitHub -->
     <div class="header">
-      <img src="robot-spx.gif.gif" alt="SPX Robot Arsip" id="robotMascot" class="robot-mascot" onclick="bukaModalArsip()" title="Klik untuk Arsip & Reset 32 Sheet Kurir">
-      <img src="Logo%20SPX.png" alt="SPX Express" class="center-logo">
+      <img src="robot-header.gif" alt="SPX Robot Arsip" id="robotMascot" class="robot-mascot" onclick="bukaModalArsip()" title="Klik untuk Arsip & Reset 32 Sheet Kurir">
+      <img src="logo-header.png" alt="SPX Express" class="center-logo">
     </div>
 
     <!-- Kartu Pemilihan Kurir -->
@@ -361,7 +361,7 @@
 
     <div id="statusBox"></div>
 
-    <!-- Kartu Kamera Scanner (Konfigurasi Asli Stabil) -->
+    <!-- Kartu Kamera Scanner -->
     <div class="card" id="scannerCard">
       <div id="reader-wrapper">
         <div class="cam-corners">
@@ -412,9 +412,8 @@
   </div>
 
   <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzgdXi9GUYGHxeo71WL-Ki-cedn2fu38A1tJV2bGPCjOHU-A_hh9TrMIstEDcnH3npIqA/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
 
-    // Daftar Whitelist 32 Nama Kurir Resmi (Terurut Abjad A-Z)
     const WHITELIST_KURIR = [
       'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
       'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
@@ -634,7 +633,6 @@
         return;
       }
 
-      // Validasi awalan SPXID06 atau ID
       if (!resiBersih.startsWith('SPXID06') && !resiBersih.startsWith('ID')) {
         suaraErrorKeras();
         if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
@@ -707,7 +705,6 @@
               }
               if (cardEl) cardEl.classList.add('synced');
             } else if (hasil.status === 'duplicate') {
-              // Jika percobaan ulang (retry) dan ternyata sudah masuk ke sheet, tandai sukses
               if (origItem.isRetry) {
                 if (badgeEl) {
                   badgeEl.className = 'tag-status tag-ok';
