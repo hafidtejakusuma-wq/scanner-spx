@@ -177,7 +177,7 @@
     .card { 
       position: relative;
       border-radius: 14px;
-      padding: 2px; /* Ruang lintasan efek running neon di tepi luar */
+      padding: 2px;
       overflow: hidden;
       flex-shrink: 0;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
@@ -225,7 +225,7 @@
       -webkit-backdrop-filter: blur(7px);
       border-radius: 12px;
       padding: 8px 10px;
-      border: 1.5px solid var(--border-color); /* Tepi kartu berwarna oranye asli tetap utuh */
+      border: 1.5px solid var(--border-color);
       box-shadow: inset 0 0 14px rgba(255, 85, 0, 0.08);
       transition: border-color 0.25s ease;
     }
@@ -581,17 +581,18 @@
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
 
+    // Format lokal DD/MM/YYYY HH:mm:ss (persis seperti 19/11/2026 17:24:26)
     function formatWaktuScanLokal(dateObj) {
       const pad = (n) => String(n).padStart(2, '0');
-      const tahun = dateObj.getFullYear();
-      const bulan = pad(dateObj.getMonth() + 1);
       const tanggal = pad(dateObj.getDate());
+      const bulan = pad(dateObj.getMonth() + 1);
+      const tahun = dateObj.getFullYear();
       const jam = pad(dateObj.getHours());
       const menit = pad(dateObj.getMinutes());
       const detik = pad(dateObj.getSeconds());
       return {
         jamSingkat: `${jam}:${menit}:${detik}`,
-        timestampLengkap: `${tahun}-${bulan}-${tanggal} ${jam}:${menit}:${detik}`
+        timestampLengkap: `${tanggal}/${bulan}/${tahun} ${jam}:${menit}:${detik}`
       };
     }
 
@@ -809,7 +810,6 @@
       if (navigator.vibrate) navigator.vibrate(100);
       triggerVisualFeedback('success', 'scannerCard');
 
-      // Rekam detik tepat saat barcode terbaca untuk Log Transmisi & Spreadsheet (0 detik selisih)
       const waktuScan = formatWaktuScanLokal(new Date());
       const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 
