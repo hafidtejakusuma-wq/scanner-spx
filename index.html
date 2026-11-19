@@ -1,1011 +1,1069 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SPX Express Barcode Scanner</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SPX Express Scanner</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
-      --spx-orange: #ee4d2d;
-      --spx-orange-light: #ff7337;
-      --bg-dark: #0f1117;
-      --card-bg: #181b24;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --green-ok: #10b981;
-      --yellow-warn: #f59e0b;
-      --red-err: #ef4444;
+      --bg-dark: #070402;
+      --bg-card: rgba(18, 11, 7, 0.86);
+      --orange-neon: #ff5500;
+      --orange-bright: #ff8c00;
+      --orange-glow: rgba(255, 85, 0, 0.45);
+      --orange-dim: rgba(255, 85, 0, 0.14);
+      --green-neon: #10b981;
+      --yellow-neon: #f59e0b;
+      --red-neon: #ef4444;
+      --text-main: #f4f4f5;
+      --text-sub: #d4d4d8;
+      --border-color: rgba(255, 107, 0, 0.65);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      min-height: 100vh;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      overscroll-behavior-y: contain;
-    }
-
-    /* =====================================================================
-       EFEK CAHAYA RUNNING MULTI-NEON + BORDER ORANYE STATIS UTUH
-       ===================================================================== */
-    @property --neon-angle {
-      syntax: '<angle>';
-      initial-value: 0deg;
-      inherits: false;
-    }
-
-    @keyframes spinNeonBorder {
-      0% { --neon-angle: 0deg; }
-      100% { --neon-angle: 360deg; }
-    }
-
-    .neon-card {
-      position: relative;
-      background: var(--card-bg);
-      border-radius: 16px;
-      padding: 16px;
-      /* Garis tepi oranye statis asli tetap utuh */
-      border: 1.5px solid var(--spx-orange);
-      z-index: 1;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    }
-
-    /* Lapisan cahaya running multi-neon mengelilingi tepi luar kartu */
-    .neon-card::before {
-      content: "";
-      position: absolute;
-      inset: -4px;
-      border-radius: 19px;
-      padding: 3px;
-      background: conic-gradient(
-        from var(--neon-angle),
-        #ff003c, /* Merah */
-        #00a2ff, /* Biru */
-        #00ff66, /* Hijau */
-        #ff7b00, /* Oranye */
-        #ff1493, /* Pink */
-        #ffe600, /* Kuning */
-        #9d00ff, /* Ungu */
-        #ff003c  /* Kembali ke Merah */
-      );
-      -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      filter: blur(4px) brightness(1.2);
-      opacity: 0.92;
-      z-index: -1;
-      pointer-events: none;
-      animation: spinNeonBorder 4s linear infinite;
-    }
-
-    /* =====================================================================
-       HEADER & TOMBOL SENTER / ARSIP
-       ===================================================================== */
-    .header-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .brand-title {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .brand-title h1 {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #ffffff;
-      letter-spacing: 0.3px;
-    }
-
-    .brand-title h1 span {
-      color: var(--spx-orange);
-    }
-
-    .brand-sub {
-      font-size: 0.74rem;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .icon-btn {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    .icon-btn:active {
-      transform: scale(0.93);
-    }
-
-    /* Tombol Senter: gradasi oranye sama dengan tombol kamera, putih terang saat aktif */
-    #btnFlash {
-      background: linear-gradient(135deg, var(--spx-orange), var(--spx-orange-light));
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(238, 77, 45, 0.45);
-    }
-
-    #btnFlash.flash-active {
-      background: #ffffff;
-      color: #111827;
-      box-shadow: 0 0 18px rgba(255, 255, 255, 0.95);
-    }
-
-    #btnArchive {
-      background: #252a37;
-      color: #e5e7eb;
-      border: 1px solid #374151;
-    }
-
-    /* =====================================================================
-       PILIH KURIR & COUNTER REAL-TIME PER KURIR
-       ===================================================================== */
-    .kurir-section {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .kurir-label-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .kurir-badge-count {
-      background: rgba(238, 77, 45, 0.18);
-      border: 1px solid var(--spx-orange);
-      color: #ff9c87;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 0.76rem;
-      font-weight: 700;
-    }
-
-    select#kurirSelect {
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    html, body { 
+      margin: 0; padding: 0;
       width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: #10131a;
-      color: #ffffff;
-      border: 1.5px solid #374151;
-      font-size: 0.95rem;
-      font-weight: 600;
-      outline: none;
-    }
-
-    select#kurirSelect:focus {
-      border-color: var(--spx-orange);
-    }
-
-    /* =====================================================================
-       KAMERA SCANNER & KONTROL
-       ===================================================================== */
-    .scanner-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    #reader {
-      width: 100%;
-      border-radius: 12px;
+      height: 100dvh;
       overflow: hidden;
-      background: #090b10;
-      min-height: 220px;
-      border: 1px dashed #374151;
+      background: var(--bg-dark); 
+      color: var(--text-main); 
     }
 
-    .btn-primary-cam {
-      width: 100%;
-      padding: 13px;
-      border-radius: 12px;
-      border: none;
-      background: linear-gradient(135deg, var(--spx-orange), var(--spx-orange-light));
-      color: #ffffff;
-      font-size: 0.96rem;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(238, 77, 45, 0.45);
-      transition: transform 0.15s ease;
+    /* 1. VIDEO BACKGROUND HUD ASLI BERWARNA ORANGE */
+    .bg-video-layer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      filter: hue-rotate(175deg) saturate(300%) brightness(1.25) contrast(1.22);
+      z-index: 0;
+      pointer-events: none;
     }
 
-    .btn-primary-cam:active {
-      transform: scale(0.98);
+    .bg-hud-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(15, 8, 3, 0.10) 0%, rgba(5, 3, 2, 0.42) 100%);
+      z-index: 1;
+      pointer-events: none;
     }
 
-    .btn-primary-cam.cam-stop {
-      background: linear-gradient(135deg, #dc2626, #ef4444);
-      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-    }
-
-    .manual-input-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .manual-input-row input {
-      flex: 1;
-      padding: 11px 12px;
-      border-radius: 10px;
-      border: 1px solid #374151;
-      background: #10131a;
-      color: #ffffff;
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      outline: none;
-    }
-
-    .manual-input-row input:focus {
-      border-color: var(--spx-orange);
-    }
-
-    .manual-input-row button {
-      padding: 0 16px;
-      border-radius: 10px;
-      border: none;
-      background: #2b3140;
-      color: #ffffff;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    /* =====================================================================
-       STATUS ANTREAN (FORCE SYNC) & LOG TRANSMISI
-       ===================================================================== */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      background: #10131a;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #2a303d;
-      font-size: 0.8rem;
-    }
-
-    .status-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dot-indicator {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--green-ok);
-      box-shadow: 0 0 8px var(--green-ok);
-    }
-
-    .dot-indicator.syncing {
-      background: var(--yellow-warn);
-      box-shadow: 0 0 10px var(--yellow-warn);
-      animation: pulseDot 0.9s infinite alternate;
-    }
-
-    @keyframes pulseDot {
-      from { transform: scale(0.85); opacity: 0.6; }
-      to { transform: scale(1.25); opacity: 1; }
-    }
-
-    #queueBadgeBtn {
-      background: #232836;
-      color: #f3f4f6;
-      border: 1px solid #4b5563;
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    #queueBadgeBtn.has-pending {
-      background: rgba(245, 158, 11, 0.2);
-      border-color: var(--yellow-warn);
-      color: #fcd34d;
-    }
-
-    .log-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      margin-bottom: 8px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: #d1d5db;
-    }
-
-    .log-list {
-      max-height: 250px;
-      overflow-y: auto;
+    /* 2. LAYOUT 1 LAYAR PENUH (100dvh) */
+    .container { 
+      max-width: 480px; 
+      height: 100dvh;
+      margin: 0 auto; 
+      padding: 4px 12px 10px 12px;
+      position: relative; 
+      z-index: 2;
       display: flex;
       flex-direction: column;
       gap: 7px;
     }
-
-    .log-item {
+    
+    /* HEADER BARIS ATAS */
+    .header { 
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      background: #11141c;
-      padding: 9px 11px;
-      border-radius: 10px;
-      border-left: 3.5px solid var(--yellow-warn);
-      font-size: 0.8rem;
+      justify-content: space-between;
+      height: 54px;
+      padding-top: 2px;
+      flex-shrink: 0;
+      position: relative;
     }
 
-    .log-item.saved { border-left-color: var(--green-ok); }
-    .log-item.error, .log-item.duplicate { border-left-color: var(--red-err); }
+    .brand-center {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 50px;
+      position: relative;
+    }
 
-    .log-info {
+    .robot-mascot {
+      width: 60px;
+      height: 50px;
+      object-fit: contain;
+      cursor: pointer;
+      margin-right: -2px;
+      z-index: 3;
+      mix-blend-mode: lighten;
+      filter: drop-shadow(0 4px 10px rgba(255, 85, 0, 0.55));
+      animation: robotFloat 3.2s ease-in-out infinite;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .robot-mascot:active {
+      transform: scale(0.92);
+    }
+    .robot-mascot.robot-happy {
+      animation: robotCheer 0.55s ease;
+    }
+
+    @keyframes robotFloat {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50%      { transform: translateY(2px) rotate(1.5deg); }
+    }
+    @keyframes robotCheer {
+      0%   { transform: scale(1) translateY(0); }
+      35%  { transform: scale(1.14) translateY(1px) rotate(6deg); }
+      70%  { transform: scale(0.96) translateY(2px) rotate(-3deg); }
+      100% { transform: scale(1) translateY(0); }
+    }
+
+    .center-logo {
+      width: 100px;
+      height: 40px;
+      object-fit: contain;
+      margin-bottom: -2px;
+      z-index: 2;
+      filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.7));
+    }
+
+    /* TOMBOL IKON POJOK KIRI & KANAN ATAS */
+    .icon-corner-btn {
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border-radius: 12px;
+      font-size: 19px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .icon-corner-btn:active:not(:disabled) { transform: scale(0.92); }
+    .icon-corner-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+    .btn-cam-start { 
+      background: linear-gradient(135deg, #ff7b00, #ff3d00); 
+      color: #fff; 
+      border: 1px solid rgba(255, 160, 80, 0.5);
+      box-shadow: 0 4px 14px var(--orange-glow); 
+    }
+    .btn-cam-stop { 
+      background: rgba(20, 12, 8, 0.88); 
+      color: var(--orange-bright); 
+      border: 1.5px solid var(--orange-neon); 
+      box-shadow: inset 0 0 10px rgba(255, 85, 0, 0.25);
+    }
+    /* Tombol Senter Berlatar Oranye Seperti Tombol Kamera */
+    .btn-torch-off { 
+      background: linear-gradient(135deg, #ff7b00, #ff3d00); 
+      color: #fff; 
+      border: 1px solid rgba(255, 160, 80, 0.5);
+      box-shadow: 0 4px 14px var(--orange-glow); 
+    }
+    .btn-torch-on { 
+      background: #fff; 
+      color: #000; 
+      border: 1px solid #fff;
+      box-shadow: 0 0 18px rgba(255, 255, 255, 0.85); 
+    }
+
+    @media (max-width: 350px) {
+      .header { height: 48px; }
+      .brand-center { height: 45px; }
+      .robot-mascot { width: 54px; height: 45px; margin-right: -1px; }
+      .center-logo { width: 90px; height: 36px; }
+      .icon-corner-btn { width: 38px; height: 38px; font-size: 17px; }
+    }
+
+    /* KARTU GLASSMORPHISM DENGAN EFEK RUNNING MULTI-NEON + TEPI ORANYE ASLI TETAP UTUH */
+    .card { 
+      position: relative;
+      border-radius: 14px;
+      padding: 2px; /* Ruang lintasan efek running neon di tepi luar */
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+      transition: transform 0.2s ease, box-shadow 0.25s ease;
+    }
+
+    /* Pita Cahaya Running Multi-Neon Berputar Mengelilingi Kartu */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 220%;
+      height: 220%;
+      background: conic-gradient(
+        from 0deg,
+        #ff003c 0deg,      /* Merah Neon */
+        #00d4ff 52deg,     /* Biru Neon */
+        #00ff66 104deg,    /* Hijau Neon */
+        #ff6a00 156deg,    /* Orange Neon */
+        #ff00cc 208deg,    /* Pink Neon */
+        #ffe600 260deg,    /* Kuning Neon */
+        #9d00ff 312deg,    /* Ungu Neon */
+        #ff003c 360deg     /* Kembali Merah Neon */
+      );
+      transform: translate(-50%, -50%) rotate(0deg);
+      animation: neonBorderSpin 4.2s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    @keyframes neonBorderSpin {
+      0%   { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* Lapisan Dalam Kartu: Tetap Mempertahankan Border Oranye Statis & Background Kaca Gelap */
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-card);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      border-radius: 12px;
+      padding: 8px 10px;
+      border: 1.5px solid var(--border-color); /* Tepi kartu berwarna oranye asli tetap utuh */
+      box-shadow: inset 0 0 14px rgba(255, 85, 0, 0.08);
+      transition: border-color 0.25s ease;
+    }
+    .card-inner::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--orange-neon), transparent);
+      pointer-events: none;
+    }
+
+    label { display: block; font-size: 10px; font-weight: 700; color: var(--text-sub); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.9px; }
+    
+    select, input[type="text"] {
+      width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.85); color: var(--text-main); font-size: 14px; font-weight: 600;
+      outline: none; transition: all 0.25s ease;
+    }
+    select:focus, input[type="text"]:focus { 
+      border-color: var(--orange-neon); 
+      box-shadow: 0 0 0 2px var(--orange-dim); 
+    }
+    select.select-empty {
+      color: var(--orange-bright);
+      border-color: rgba(255, 140, 0, 0.6);
+    }
+
+    /* Skeleton Screen */
+    .skeleton-box {
+      width: 100%;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(110deg, rgba(35, 22, 14, 0.9) 25%, rgba(255, 95, 0, 0.25) 50%, rgba(35, 22, 14, 0.9) 75%);
+      background-size: 200% 100%;
+      border: 1px solid rgba(255, 107, 0, 0.25);
+      animation: skeletonShimmer 1.3s infinite linear;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: rgba(255, 160, 80, 0.75);
+    }
+    @keyframes skeletonShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Bar Status Antrean Sinkronisasi */
+    .sync-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0, 0, 0, 0.82); border: 1px solid var(--border-color); border-radius: 10px;
+      padding: 6px 12px; font-size: 11px;
+      backdrop-filter: blur(6px);
+      flex-shrink: 0;
+    }
+    .sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: #10b981; }
+    .sync-dot.busy { background: #ff6b00; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    #statusBox {
+      display: none; padding: 7px 10px; border-radius: 10px;
+      font-size: 12px; font-weight: 700; text-align: center;
+      backdrop-filter: blur(6px);
+      flex-shrink: 0;
+    }
+    .status-success { display: block !important; background: rgba(16, 185, 129, 0.22); border: 1px solid #10b981; color: #34d399; }
+    .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
+    .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
+
+    /* KARTU KAMERA LEBIH LUAS & CEPAT */
+    .scanner-card {
+      flex: 1;
+      min-height: 220px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+    }
+    .scanner-card .card-inner {
+      display: flex;
+      flex-direction: column;
+      padding: 7px;
     }
 
-    .log-resi {
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: 0.3px;
+    #reader-wrapper { 
+      position: relative; width: 100%; height: 100%;
+      border-radius: 10px; overflow: hidden; 
+      background: #000; 
+      border: 1px solid var(--border-color);
+      transition: all 0.25s ease;
+    }
+    #reader { width: 100%; height: 100%; }
+    #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+
+    .cam-corners {
+      position: absolute;
+      inset: 12px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.35;
+      transition: opacity 0.3s ease;
+    }
+    .cam-active .cam-corners {
+      opacity: 1;
+      animation: cornerPulse 1.8s ease-in-out infinite;
+    }
+    .cam-corners span {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--orange-neon);
+      border-style: solid;
+    }
+    .cam-corners span:nth-child(1) { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+    .cam-corners span:nth-child(2) { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+    .cam-corners span:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+    .cam-corners span:nth-child(4) { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+    @keyframes cornerPulse {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(0.97); }
     }
 
-    .log-meta {
-      font-size: 0.71rem;
-      color: var(--text-muted);
+    .manual-row { display: flex; gap: 8px; }
+    .manual-row input { flex: 1; }
+    .btn-manual { 
+      padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 700;
+      cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+      background: var(--orange-dim); color: var(--orange-bright); border: 1px solid var(--orange-neon); 
+      transition: transform 0.15s ease;
+    }
+    .btn-manual:active { transform: scale(0.94); }
+
+    /* Visual Feedback (Efek Perubahan Warna Background) */
+    .flash-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 998; opacity: 0; }
+    .flash-success { animation: flashGreen 0.45s ease-out; }
+    .flash-duplicate { animation: flashYellow 0.5s ease-out; }
+    .flash-error { animation: flashRed 0.5s ease-out; }
+    @keyframes flashGreen { 0% { opacity: 0.38; background: radial-gradient(circle, transparent 35%, rgba(16, 185, 129, 0.75) 100%); } 100% { opacity: 0; } }
+    @keyframes flashYellow { 0% { opacity: 0.42; background: radial-gradient(circle, transparent 35%, rgba(245, 158, 11, 0.8) 100%); } 100% { opacity: 0; } }
+    @keyframes flashRed { 0% { opacity: 0.45; background: radial-gradient(circle, transparent 35%, rgba(239, 68, 68, 0.85) 100%); } 100% { opacity: 0; } }
+
+    .shake-anim { animation: horizontalShake 0.42s cubic-bezier(.36,.07,.19,.97) both; }
+    .shake-anim .card-inner { border-color: var(--red-neon) !important; }
+    .pulse-success-card .card-inner { border-color: var(--green-neon) !important; }
+    @keyframes horizontalShake {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(5px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+      40%, 60% { transform: translate3d(7px, 0, 0); }
     }
 
-    .log-status {
-      font-size: 0.72rem;
-      font-weight: 800;
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: rgba(245, 158, 11, 0.16);
-      color: #fbbf24;
+    /* LOG TRANSMISI: 2 BARIS & TETAP BISA DI-SCROLL */
+    .history-card {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
+    .history-card .card-inner {
+      display: flex;
+      flex-direction: column;
+      padding: 7px 10px;
+    }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0; }
+    .badge { background: var(--orange-neon); color: #fff; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 800; }
+    
+    .history-list { 
+      height: 92px;
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+    }
+    
+    .history-item {
+      background: rgba(0, 0, 0, 0.82); padding: 6px 10px; border-radius: 8px; 
+      border-left: 3px solid #f59e0b;
+      display: flex; justify-content: space-between; align-items: center; font-size: 12px;
+      flex-shrink: 0;
+      min-height: 42px;
+    }
+    .history-item.synced { border-left-color: #10b981; }
+    .history-item.dup { border-left-color: #ef4444; opacity: 0.72; }
+    .history-resi { font-weight: 700; color: #fff; font-family: monospace; font-size: 13px; }
+    .history-meta { font-size: 10px; color: var(--text-sub); margin-top: 1px; }
+    .tag-status { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; }
+    .tag-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .tag-dup { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
-    .log-item.saved .log-status {
-      background: rgba(16, 185, 129, 0.16);
-      color: #34d399;
+    /* MODAL ARSIP BERPASSWORD 1110 */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.84);
+      backdrop-filter: blur(6px); z-index: 999;
+      display: none; align-items: center; justify-content: center; padding: 16px;
     }
-
-    .log-item.error .log-status,
-    .log-item.duplicate .log-status {
-      background: rgba(239, 68, 68, 0.16);
-      color: #f87171;
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      width: 100%; max-width: 330px; background: #140c08;
+      border: 1.5px solid var(--orange-neon); border-radius: 16px;
+      padding: 18px; text-align: center; box-shadow: 0 0 28px var(--orange-glow);
     }
-
-    /* =====================================================================
-       HARD BLOCK BANNER SAAT ADA PENGIRIMAN AKTIF
-       ===================================================================== */
-    #hardBlockWarning {
-      display: none;
-      position: fixed;
-      bottom: 14px;
-      left: 14px;
-      right: 14px;
-      background: linear-gradient(135deg, #b91c1c, #ea580c);
-      color: #ffffff;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      text-align: center;
-      z-index: 9999;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.75);
-      border: 1.5px solid #fca5a5;
+    .modal-title { font-size: 15px; font-weight: 800; color: var(--orange-bright); margin-bottom: 8px; letter-spacing: 0.8px; }
+    .modal-desc { font-size: 13px; color: var(--text-sub); line-height: 1.4; margin-bottom: 12px; }
+    .modal-pass {
+      width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--orange-neon);
+      background: #000; color: #fff; font-size: 18px; font-weight: 800;
+      text-align: center; letter-spacing: 5px; margin-bottom: 12px; outline: none;
     }
+    .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-btns button {
+      padding: 10px; border: none; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .btn-modal-cancel { background: #27272a; color: #d4d4d8; }
+    .btn-modal-ok { background: linear-gradient(135deg, #ff7b00, #ff3d00); color: #fff; }
   </style>
 </head>
 <body>
+  <!-- Video Background HUD Asli -->
+  <video id="bgHudVideo" class="bg-video-layer" autoplay loop muted playsinline preload="auto">
+    <source src="bg-hud.mp4.mp4" type="video/mp4">
+    <source src="bg-hud.mp4" type="video/mp4">
+  </video>
+  <div class="bg-hud-overlay"></div>
 
-  <!-- KARTU 1: HEADER & TOMBOL SENTER / ARSIP -->
-  <div class="neon-card header-card">
-    <div class="brand-title">
-      <h1><span>SPX</span> EXPRESS SCANNER</h1>
-      <div class="brand-sub" id="wakeLockStatus">Mode Siaga • Anti-Hilang Data Aktif</div>
-    </div>
-    <div class="header-actions">
-      <button id="btnFlash" class="icon-btn" title="Senter Kamera" onclick="toggleFlash()">🔦</button>
-      <button id="btnArchive" class="icon-btn" title="Arsipkan Data" onclick="promptArchive()">🤖</button>
-    </div>
-  </div>
+  <!-- Layer Kilatan Visual Feedback -->
+  <div id="flashOverlay" class="flash-overlay"></div>
 
-  <!-- KARTU 2: PILIH KURIR & COUNTER REAL-TIME PER KURIR -->
-  <div class="neon-card kurir-section">
-    <div class="kurir-label-row">
-      <span>NAMA KURIR BERTUGAS</span>
-      <span class="kurir-badge-count" id="kurirCounterBadge">PILIH KURIR: 0 RESI</span>
-    </div>
-    <select id="kurirSelect" onchange="updateKurirCounterUI()">
-      <option value="">-- Memuat Daftar Kurir... --</option>
-    </select>
-  </div>
-
-  <!-- KARTU 3: KAMERA PEMINDAI & INPUT MANUAL -->
-  <div class="neon-card scanner-wrapper">
-    <div id="reader"></div>
-    <button id="btnToggleCam" class="btn-primary-cam" onclick="toggleCamera()">📷 MULAI SCAN BARCODE</button>
-    <div class="manual-input-row">
-      <input type="text" id="manualResiInput" placeholder="Ketik / tempel resi manual..." onkeydown="if(event.key==='Enter') handleManualInput()" />
-      <button onclick="handleManualInput()">KIRIM</button>
-    </div>
-  </div>
-
-  <!-- KARTU 4: STATUS ANTREAN (FORCE SYNC) & LOG TRANSMISI -->
-  <div class="neon-card">
-    <div class="status-bar">
-      <div class="status-left">
-        <div id="statusDot" class="dot-indicator"></div>
-        <span id="statusText">Terhubung • Siap Scan</span>
+  <div class="container">
+    <!-- HEADER: Ikon Kamera (Kiri) + Robot & Logo SPX (Tengah) + Ikon Senter (Kanan) -->
+    <div class="header">
+      <button id="btnKamera" class="icon-corner-btn btn-cam-start" onclick="toggleKamera()" title="Aktifkan / Matikan Kamera">📷</button>
+      
+      <div class="brand-center">
+        <img src="robot-header.gif" alt="SPX Robot Arsip" id="robotMascot" class="robot-mascot" onclick="bukaModalArsip()" title="Klik untuk Arsip & Reset 32 Sheet Kurir">
+        <img src="logo-header.png" alt="SPX Express" class="center-logo">
       </div>
-      <button id="queueBadgeBtn" onclick="forceSyncNow()" title="Ketuk untuk paksa kirim ulang sekarang">
-        Antrean: 0
-      </button>
+
+      <button id="btnSenter" class="icon-corner-btn btn-torch-off" onclick="toggleSenter()" disabled title="Nyalakan / Matikan Senter">🔦</button>
     </div>
 
-    <div class="log-header">
-      <span>LOG TRANSMISI REAL-TIME</span>
-      <span id="totalScanCounter">Total Sesi: 0 SCAN</span>
+    <!-- Kartu Pemilihan Kurir -->
+    <div class="card" id="kurirCard">
+      <div class="card-inner">
+        <div id="kurirSkeleton" class="skeleton-box">MENGHUBUNGKAN DATABASE KURIR...</div>
+        <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
+          <option value="">-- PILIH NAMA KURIR --</option>
+        </select>
+      </div>
     </div>
-    <div class="log-list" id="logList"></div>
+
+    <!-- Indikator Antrean Real-Time -->
+    <div class="sync-bar">
+      <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
+      <div style="color:var(--orange-bright); font-weight:700;" id="queueCount">Antrean: 0</div>
+    </div>
+
+    <div id="statusBox"></div>
+
+    <!-- Kartu Kamera Scanner Lebih Luas & Cepat -->
+    <div class="card scanner-card" id="scannerCard">
+      <div class="card-inner">
+        <div id="reader-wrapper">
+          <div class="cam-corners">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div id="reader"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kartu Input Manual -->
+    <div class="card" id="manualCard">
+      <div class="card-inner">
+        <label for="manualInput">Manual Override (SPXID06 / ID)</label>
+        <div class="manual-row">
+          <input type="text" id="manualInput" placeholder="Contoh: SPXID06... atau ID...">
+          <button class="btn-manual" onclick="kirimManual()">TRANSMIT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kartu Riwayat Transmisi (2 Baris + Scrollable) -->
+    <div class="card history-card" id="historyCard">
+      <div class="card-inner">
+        <div class="history-header">
+          <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-sub);">Log Transmisi</span>
+          <span class="badge" id="scanCounter">0 SCAN</span>
+        </div>
+        <div class="history-list" id="historyList">
+          <div style="text-align:center; color:var(--text-sub); font-size:11px; padding:28px 10px; opacity:0.6;">NO DATA RECORDED</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- PERINGATAN HARD BLOCK SAAT TOMBOL BACK DITEKAN KETIKA MASIH MENGIRIM -->
-  <div id="hardBlockWarning">
-    ⚠️ JANGAN KELUAR! Masih ada resi berstatus MENGIRIM ke server...
+  <!-- MODAL KONFIRMASI ARSIP BERPASSWORD 1110 -->
+  <div id="archiveModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">ARSIPKAN 32 SHEET KURIR</div>
+      <div class="modal-desc">
+        Pindahkan seluruh data dari <b>32 sheet kurir (urut A–Z)</b> ke <b>Resi History</b> dan kosongkan data kurir. Masukkan password:
+      </div>
+      <input type="password" id="archivePassInput" class="modal-pass" inputmode="numeric" maxlength="10" placeholder="••••">
+      <div class="modal-btns">
+        <button class="btn-modal-cancel" onclick="tutupModalArsip()">BATAL</button>
+        <button class="btn-modal-ok" onclick="prosesArsipData()">ARSIPKAN</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    // =========================================================================
-    // KONFIGURASI WEB APP URL & KUNCI PENYIMPANAN LOKAL
-    // =========================================================================
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzgdXi9GUYGHxeo71WL-Ki-cedn2fu38A1tJV2bGPCjOHU-A_hh9TrMIstEDcnH3npIqA/exec';
-    const STORAGE_QUEUE_KEY = 'spx_pending_upload_queue_v1';
-    const STORAGE_COUNTS_KEY = 'spx_kurir_session_counts_v1';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
+
+    const WHITELIST_KURIR = [
+      'INDRA AMTA ZIANSYAH', 'MATTASSLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
+      'ZAINUL FATAH', 'QOMARULLAH', 'SANI', 'MUHAMMAD RIDWAN', 'ABDUL HALIM',
+      'SAHRUL ANAM', 'KHAIRUDDIN', 'HAMDANI', 'NURUL ANWAR',
+      'MASRUDI', 'ABD MAJID', 'SUMARI', 'WASIS BUDIONO',
+      'ARMAN SUSIANTO', 'ABDURRAHMAN', 'MOH SAHRIL', 'DWI AGUSTIONO',
+      'MIFTAHUL GHANI', 'IRVAN FAUZY', 'MUHAMMAD AINUS SYAMSI',
+      'MUHAMMAD NURULLAH AJI SAPUTRA', 'MOHAMMAD HARIS', 'SANDI AGUSTINO',
+      'EDY MUCHLAS', 'MOH. MAULANA TAQWIM', 'ABD MUTHALIB',
+      'MOH. TRIOWAN KURNIA', 'AMIRIL MUKMININ'
+    ].sort((a, b) => a.localeCompare(b, 'id'));
 
     let html5QrCode = null;
-    let isCameraRunning = false;
-    let isFlashOn = false;
-    let wakeLock = null;
+    let isScanning = false;
+    let isTorchOn = false;
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
+    let totalScan = 0;
+    let audioCtx = null;
 
+    const localCache = new Set();
     let uploadQueue = [];
     let isSyncing = false;
-    let localCache = new Set();
-    let kurirCounts = {};
-    let totalSessionScans = 0;
 
-    // =========================================================================
-    // INISIALISASI SAAT HALAMAN DIMUAT
-    // =========================================================================
-    window.onload = async function () {
-      restoreFromLocalStorage();
-      setupHardBlockNavigation();
-      await loadKurirList();
-      // Jalankan siklus pengiriman batch tiap 2,5 detik
-      setInterval(() => prosesAntreanBatch(false), 2500);
-      // Jika ada sisa antrean dari sesi sebelumnya yang sempat terputus, langsung kirim
-      if (uploadQueue.length > 0) {
-        prosesAntreanBatch(false);
-      }
-    };
-
-    // =========================================================================
-    // PENYIMPANAN PERMANEN ANTI-HILANG DATA (localStorage)
-    // =========================================================================
-    function saveQueueToLocalStorage() {
-      try {
-        localStorage.setItem(STORAGE_QUEUE_KEY, JSON.stringify(uploadQueue));
-        localStorage.setItem(STORAGE_COUNTS_KEY, JSON.stringify({
-          kurirCounts: kurirCounts,
-          totalSessionScans: totalSessionScans
-        }));
-      } catch (e) {
-        console.warn('Gagal menyimpan ke localStorage:', e);
+    function pastikanVideoBackgroundBerputar() {
+      const bgVid = document.getElementById('bgHudVideo');
+      if (bgVid && bgVid.paused) {
+        bgVid.muted = true;
+        bgVid.play().catch(() => {});
       }
     }
+    ['touchstart', 'pointerdown', 'click', 'change'].forEach(evt => {
+      document.addEventListener(evt, pastikanVideoBackgroundBerputar, { passive: true });
+    });
 
-    function restoreFromLocalStorage() {
-      try {
-        const savedQueue = localStorage.getItem(STORAGE_QUEUE_KEY);
-        if (savedQueue) {
-          const parsed = JSON.parse(savedQueue);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            uploadQueue = parsed.map(item => ({ ...item, isRetry: true }));
-            uploadQueue.forEach(item => {
-              localCache.add(item.kurir + '_' + item.resi);
-              renderLogItem(item, 'MENGIRIM...', '');
-            });
-          }
-        }
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }
 
-        const savedCounts = localStorage.getItem(STORAGE_COUNTS_KEY);
-        if (savedCounts) {
-          const parsedCounts = JSON.parse(savedCounts);
-          kurirCounts = parsedCounts.kurirCounts || {};
-          totalSessionScans = parsedCounts.totalSessionScans || 0;
-          document.getElementById('totalScanCounter').textContent = `Total Sesi: ${totalSessionScans} SCAN`;
-        }
-        updateQueueUI();
-      } catch (e) {
-        console.warn('Gagal memulihkan dari localStorage:', e);
+    function formatWaktuScanLokal(dateObj) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const tahun = dateObj.getFullYear();
+      const bulan = pad(dateObj.getMonth() + 1);
+      const tanggal = pad(dateObj.getDate());
+      const jam = pad(dateObj.getHours());
+      const menit = pad(dateObj.getMinutes());
+      const detik = pad(dateObj.getSeconds());
+      return {
+        jamSingkat: `${jam}:${menit}:${detik}`,
+        timestampLengkap: `${tahun}-${bulan}-${tanggal} ${jam}:${menit}:${detik}`
+      };
+    }
+
+    function triggerVisualFeedback(type, targetCardId) {
+      const flash = document.getElementById('flashOverlay');
+      flash.className = 'flash-overlay';
+      void flash.offsetWidth;
+      flash.classList.add('flash-' + type);
+
+      if (type === 'success') {
+        const robot = document.getElementById('robotMascot');
+        robot.classList.remove('robot-happy');
+        void robot.offsetWidth;
+        robot.classList.add('robot-happy');
+
+        const scanCard = document.getElementById('scannerCard');
+        scanCard.classList.add('pulse-success-card');
+        setTimeout(() => scanCard.classList.remove('pulse-success-card'), 450);
+      } else {
+        const card = document.getElementById(targetCardId || 'scannerCard');
+        card.classList.remove('shake-anim');
+        void card.offsetWidth;
+        card.classList.add('shake-anim');
+        setTimeout(() => card.classList.remove('shake-anim'), 450);
       }
     }
 
-    // =========================================================================
-    // HARD BLOCK NAVIGATION & PENGIRIMAN DARURAT SAAT KELUAR / MINIMIZE
-    // =========================================================================
-    function setupHardBlockNavigation() {
-      // Dorong state history agar tombol Back HP bisa dicegat
-      history.pushState({ spxGuard: true }, '', location.href);
-
-      window.addEventListener('popstate', function () {
-        if (uploadQueue.length > 0 || isSyncing) {
-          // Cegat tombol Back HP saat masih ada resi berstatus MENGIRIM
-          history.pushState({ spxGuard: true }, '', location.href);
-          playBeep('error');
-          showHardBlockBanner();
-          prosesAntreanBatch(false);
-        }
-      });
-
-      // Cegat tutup tab / refresh browser saat masih ada antrean
-      window.addEventListener('beforeunload', function (e) {
-        if (uploadQueue.length > 0 || isSyncing) {
-          saveQueueToLocalStorage();
-          e.preventDefault();
-          e.returnValue = 'Masih ada resi yang belum terkirim ke server!';
-          return e.returnValue;
-        }
-      });
-
-      // Kirim darurat seketika saat kurir menekan tombol Home / pindah aplikasi
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'hidden' && uploadQueue.length > 0) {
-          saveQueueToLocalStorage();
-          prosesAntreanBatch(true); // Mode darurat keepalive
-        }
-      });
-
-      window.addEventListener('pagehide', function () {
-        if (uploadQueue.length > 0) {
-          saveQueueToLocalStorage();
-          prosesAntreanBatch(true); // Mode darurat keepalive
-        }
-      });
-    }
-
-    function showHardBlockBanner() {
-      const banner = document.getElementById('hardBlockWarning');
-      banner.textContent = `⚠️ JANGAN KELUAR! Masih ada ${uploadQueue.length} resi berstatus MENGIRIM...`;
-      banner.style.display = 'block';
-      clearTimeout(window._bannerTimer);
-      window._bannerTimer = setTimeout(() => {
-        banner.style.display = 'none';
-      }, 4000);
-    }
-
-    // =========================================================================
-    // MUAT DAFTAR KURIR DARI GOOGLE SCRIPT
-    // =========================================================================
-    async function loadKurirList() {
+    function onKurirChange() {
+      pastikanVideoBackgroundBerputar();
       const select = document.getElementById('kurirSelect');
+      if (select.value) {
+        select.classList.remove('select-empty');
+        document.getElementById('statusBox').style.display = 'none';
+      } else {
+        select.classList.add('select-empty');
+      }
+    }
+
+    window.onload = async function() {
+      pastikanVideoBackgroundBerputar();
+
+      html5QrCode = new Html5Qrcode("reader", {
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      });
+      
+      const skeleton = document.getElementById('kurirSkeleton');
+      const select = document.getElementById('kurirSelect');
+
       try {
-        const res = await fetch(WEB_APP_URL);
-        const data = await res.json();
-        const list = data.kurir || [];
+        const response = await fetch(WEB_APP_URL);
+        const res = await response.json();
+
+        let daftarKurir = [];
+        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          const allowedSet = new Set(WHITELIST_KURIR.map(n => n.toUpperCase()));
+          daftarKurir = res.data
+            .map(n => String(n).trim())
+            .filter(n => allowedSet.has(n.toUpperCase()))
+            .sort((a, b) => a.localeCompare(b, 'id'));
+        }
+
+        if (daftarKurir.length === 0) daftarKurir = WHITELIST_KURIR;
+
         select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
-        list.forEach(nama => {
+        daftarKurir.forEach(function(kurir) {
           const opt = document.createElement('option');
-          opt.value = nama;
-          opt.textContent = nama;
+          opt.value = kurir;
+          opt.textContent = kurir;
           select.appendChild(opt);
         });
-        updateKurirCounterUI();
       } catch (err) {
-        select.innerHTML = '<option value="">Gagal memuat kurir (Cek koneksi)</option>';
+        select.innerHTML = '<option value="">-- PILIH NAMA KURIR --</option>';
+        WHITELIST_KURIR.forEach(function(kurir) {
+          const opt = document.createElement('option');
+          opt.value = kurir;
+          opt.textContent = kurir;
+          select.appendChild(opt);
+        });
+      } finally {
+        skeleton.style.display = 'none';
+        select.style.display = 'block';
       }
-    }
 
-    function updateKurirCounterUI() {
+      setInterval(prosesAntreanBatch, 2500);
+    };
+
+    async function toggleKamera() {
+      initAudio();
+      pastikanVideoBackgroundBerputar();
       const kurir = document.getElementById('kurirSelect').value;
-      const badge = document.getElementById('kurirCounterBadge');
-      if (!kurir) {
-        badge.textContent = 'PILIH KURIR: 0 RESI';
+
+      if (!isScanning && !kurir) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
+        document.getElementById('kurirSelect').focus();
         return;
       }
-      const count = kurirCounts[kurir] || 0;
-      badge.textContent = `${kurir}: ${count} RESI`;
-    }
 
-    // =========================================================================
-    // SCREEN WAKE LOCK (LAYAR TETAP MENYALA SAAT KAMERA AKTIF)
-    // =========================================================================
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          document.getElementById('wakeLockStatus').textContent = 'Layar Terkunci Menyala • Anti-Hilang Data';
-        }
-      } catch (err) {
-        console.warn('WakeLock tidak didukung/ditolak:', err);
-      }
-    }
+      const btnCam = document.getElementById('btnKamera');
+      const btnTorch = document.getElementById('btnSenter');
+      const wrapper = document.getElementById('reader-wrapper');
 
-    async function releaseWakeLock() {
-      try {
-        if (wakeLock !== null) {
-          await wakeLock.release();
-          wakeLock = null;
-        }
-        document.getElementById('wakeLockStatus').textContent = 'Mode Siaga • Anti-Hilang Data Aktif';
-      } catch (err) {
-        console.warn('Gagal melepas WakeLock:', err);
-      }
-    }
-
-    // =========================================================================
-    // KAMERA SCANNER & KONTROL SENTER
-    // =========================================================================
-    async function toggleCamera() {
-      const btn = document.getElementById('btnToggleCam');
-      if (!isCameraRunning) {
-        const kurir = document.getElementById('kurirSelect').value;
-        if (!kurir) {
-          alert('Silakan pilih NAMA KURIR terlebih dahulu sebelum mulai scan!');
-          return;
-        }
+      if (!isScanning) {
         try {
-          if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("reader");
-          }
           await html5QrCode.start(
             { facingMode: "environment" },
-            { fps: 15, qrbox: { width: 260, height: 140 } },
-            onScanSuccess
+            {
+              fps: 25,
+              qrbox: function(viewfinderWidth, viewfinderHeight) {
+                return {
+                  width: Math.floor(viewfinderWidth * 0.99),
+                  height: Math.floor(viewfinderHeight * 0.99)
+                };
+              }
+            },
+            onScanSuccess,
+            () => {}
           );
-          isCameraRunning = true;
-          btn.textContent = '⏹️ MATIKAN KAMERA';
-          btn.classList.add('cam-stop');
-          await requestWakeLock();
+          isScanning = true;
+          wrapper.classList.add('cam-active');
+          btnCam.textContent = '⏹';
+          btnCam.className = 'icon-corner-btn btn-cam-stop';
+          btnTorch.disabled = false;
+          document.getElementById('statusBox').style.display = 'none';
         } catch (err) {
-          alert('Gagal mengakses kamera: ' + err);
+          tampilkanStatus('error', 'CAMERA ACCESS DENIED: ' + err);
         }
       } else {
-        try {
-          if (isFlashOn) await toggleFlash(true);
-          await html5QrCode.stop();
-          isCameraRunning = false;
-          btn.textContent = '📷 MULAI SCAN BARCODE';
-          btn.classList.remove('cam-stop');
-          await releaseWakeLock();
-        } catch (err) {
-          console.error(err);
-        }
+        if (isTorchOn) await setTorchState(false);
+        await html5QrCode.stop();
+        isScanning = false;
+        wrapper.classList.remove('cam-active');
+        btnCam.textContent = '📷';
+        btnCam.className = 'icon-corner-btn btn-cam-start';
+        btnTorch.disabled = true;
       }
     }
 
-    async function toggleFlash(forceOff = false) {
-      const btnFlash = document.getElementById('btnFlash');
-      if (!isCameraRunning || !html5QrCode) {
-        alert('Nyalakan kamera terlebih dahulu untuk menggunakan senter.');
-        return;
-      }
+    async function toggleSenter() {
+      if (!isScanning) return;
+      await setTorchState(!isTorchOn);
+    }
+
+    async function setTorchState(state) {
+      const btnTorch = document.getElementById('btnSenter');
       try {
-        const nextState = forceOff ? false : !isFlashOn;
-        await html5QrCode.applyVideoConstraints({
-          advanced: [{ torch: nextState }]
-        });
-        isFlashOn = nextState;
-        if (isFlashOn) {
-          btnFlash.classList.add('flash-active');
-          btnFlash.textContent = '💡';
-        } else {
-          btnFlash.classList.remove('flash-active');
-          btnFlash.textContent = '🔦';
-        }
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: state }] });
+        isTorchOn = state;
+        btnTorch.textContent = isTorchOn ? '💡' : '🔦';
+        btnTorch.className = isTorchOn ? 'icon-corner-btn btn-torch-on' : 'icon-corner-btn btn-torch-off';
       } catch (err) {
-        alert('Perangkat/kamera ini tidak mendukung kontrol senter langsung.');
+        tampilkanStatus('error', 'FLASHLIGHT NOT SUPPORTED ON THIS DEVICE.');
       }
-    }
-
-    // =========================================================================
-    // PEMROSESAN HASIL SCAN & FORMAT TIMESTAMP LOKAL (0 DETIK SELISIH)
-    // =========================================================================
-    function getFormattedLocalTimestamp() {
-      const now = new Date();
-      const pad = (n) => String(n).padStart(2, '0');
-      return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    }
-
-    function handleManualInput() {
-      const input = document.getElementById('manualResiInput');
-      const val = input.value.trim().toUpperCase();
-      if (!val) return;
-      input.value = '';
-      onScanSuccess(val);
     }
 
     function onScanSuccess(decodedText) {
+      const now = Date.now();
+      if (decodedText === lastScannedCode && (now - lastScannedTime) < 1000) return;
+      lastScannedCode = decodedText;
+      lastScannedTime = now;
+
+      masukkanKeAntrean(decodedText);
+    }
+
+    function kirimManual() {
+      initAudio();
+      pastikanVideoBackgroundBerputar();
+      const input = document.getElementById('manualInput');
+      if (!input.value.trim()) {
+        suaraErrorKeras();
+        triggerVisualFeedback('error', 'manualCard');
+        tampilkanStatus('error', 'Masukkan nomor resi terlebih dahulu.');
+        return;
+      }
+      masukkanKeAntrean(input.value.trim());
+      input.value = '';
+    }
+
+    function masukkanKeAntrean(nomorResi) {
       const kurir = document.getElementById('kurirSelect').value;
+      const cekDuplikat = true;
+      const resiBersih = String(nomorResi).trim().toUpperCase();
+
       if (!kurir) {
-        playBeep('error');
-        alert('Pilih NAMA KURIR terlebih dahulu!');
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'kurirCard');
+        tampilkanStatus('error', '⚠️ PILIH NAMA KURIR TERLEBIH DAHULU!');
         return;
       }
 
-      const resi = String(decodedText || '').trim().toUpperCase();
-      if (!resi.startsWith('SPXID06') && !resi.startsWith('ID')) {
-        return; // Abaikan barcode selain resi SPX/ID
+      if (!resiBersih.startsWith('SPXID06') && !resiBersih.startsWith('ID')) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('error', 'scannerCard');
+        tampilkanStatus('error', '⛔ DITOLAK: "' + resiBersih + '" bukan resi SPXID06 / ID');
+        return;
       }
 
-      const cacheKey = kurir + '_' + resi;
-      if (localCache.has(cacheKey)) {
-        return; // Cegah spam pembacaan kamera dalam milidetik yang sama
+      const cacheKey = kurir + '::' + resiBersih;
+      if (cekDuplikat && localCache.has(cacheKey)) {
+        suaraErrorKeras();
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        triggerVisualFeedback('duplicate', 'scannerCard');
+        tampilkanStatus('duplicate', '⚠️ DUPLIKAT LOKAL: ' + resiBersih + ' sudah di-scan!');
+        return;
       }
 
       localCache.add(cacheKey);
-      playBeep('success');
+      suaraSuksesKeras();
+      if (navigator.vibrate) navigator.vibrate(100);
+      triggerVisualFeedback('success', 'scannerCard');
 
-      const timestamp = getFormattedLocalTimestamp();
-      const itemId = 'scan_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      // Rekam detik tepat saat barcode terbaca untuk Log Transmisi & Spreadsheet (0 detik selisih)
+      const waktuScan = formatWaktuScanLokal(new Date());
+      const itemId = 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 
-      const newItem = {
+      uploadQueue.push({
         id: itemId,
         kurir: kurir,
-        resi: resi,
-        timestamp: timestamp,
+        resi: resiBersih,
+        timestamp: waktuScan.timestampLengkap,
+        cekDuplikat: cekDuplikat,
         isRetry: false
-      };
+      });
 
-      uploadQueue.push(newItem);
-      saveQueueToLocalStorage();
-
-      // Update counter sesi & counter per kurir
-      totalSessionScans++;
-      kurirCounts[kurir] = (kurirCounts[kurir] || 0) + 1;
-      document.getElementById('totalScanCounter').textContent = `Total Sesi: ${totalSessionScans} SCAN`;
-      updateKurirCounterUI();
-
-      renderLogItem(newItem, 'MENGIRIM...', '');
       updateQueueUI();
+      tampilkanStatus('success', '⚡ MASUK ANTREAN: ' + resiBersih);
+      tambahKeRiwayat(itemId, resiBersih, kurir, waktuScan.jamSingkat);
     }
 
-    // =========================================================================
-    // PENGIRIMAN BATCH (25 RESI PER PAKET) & FORCE SYNC
-    // =========================================================================
-    function forceSyncNow() {
-      if (uploadQueue.length === 0) {
-        alert('Semua data sudah terkirim (Antrean: 0).');
-        return;
-      }
-      prosesAntreanBatch(false);
-    }
-
-    async function prosesAntreanBatch(isEmergencyKeepalive = false) {
-      if (uploadQueue.length === 0) return;
-      if (isSyncing && !isEmergencyKeepalive) return;
+    async function prosesAntreanBatch() {
+      if (isSyncing || uploadQueue.length === 0) return;
 
       isSyncing = true;
-      updateQueueUI();
+      updateSyncStatus(true, 'Menyimpan ' + uploadQueue.length + ' data...');
 
       const batchToSend = uploadQueue.slice(0, 25);
-      const sentIds = new Set(batchToSend.map(i => i.id));
 
       try {
         const response = await fetch(WEB_APP_URL, {
           method: 'POST',
-          keepalive: isEmergencyKeepalive,
+          redirect: 'follow',
+          cache: 'no-store',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'batch_scan',
-            items: batchToSend
-          })
+          body: JSON.stringify({ items: batchToSend })
         });
+        const res = await response.json();
 
-        const data = await response.json();
+        if (res.status === 'success' && Array.isArray(res.results)) {
+          uploadQueue.splice(0, batchToSend.length);
 
-        if (data.status === 'busy') {
-          // Tandai retry agar tidak memicu alarm duplikat palsu
-          uploadQueue.forEach(item => {
-            if (sentIds.has(item.id)) item.isRetry = true;
-          });
-          saveQueueToLocalStorage();
-          document.getElementById('statusText').textContent = 'Antrean padat, mencoba ulang...';
-        } else if (data.status === 'success') {
-          const results = data.results || [];
-          const resultMap = new Map(results.map(r => [r.id, r]));
+          res.results.forEach((hasil, idx) => {
+            const origItem = batchToSend[idx];
+            if (!origItem) return;
+            const badgeEl = document.getElementById('status-' + origItem.id);
+            const cardEl = document.getElementById(origItem.id);
 
-          // Hapus item yang sudah selesai diproses dari uploadQueue & localStorage
-          uploadQueue = uploadQueue.filter(item => !sentIds.has(item.id));
-          saveQueueToLocalStorage();
-
-          batchToSend.forEach(origItem => {
-            const res = resultMap.get(origItem.id);
-            if (!res) return;
-
-            if (res.status === 'saved') {
-              updateLogItemStatus(origItem.id, `TERSIMPAN (#${res.no})`, 'saved');
-            } else if (res.status === 'duplicate') {
+            if (hasil.status === 'success') {
+              if (badgeEl) {
+                badgeEl.className = 'tag-status tag-ok';
+                badgeEl.textContent = 'TERSIMPAN #' + hasil.no;
+              }
+              if (cardEl) cardEl.classList.add('synced');
+            } else if (hasil.status === 'duplicate') {
               if (origItem.isRetry) {
-                // Ternyata sudah masuk saat percobaan sebelum sinyal putus
-                updateLogItemStatus(origItem.id, 'TERSIMPAN', 'saved');
+                if (badgeEl) {
+                  badgeEl.className = 'tag-status tag-ok';
+                  badgeEl.textContent = 'TERSIMPAN';
+                }
+                if (cardEl) cardEl.classList.add('synced');
               } else {
-                playBeep('error');
-                updateLogItemStatus(origItem.id, 'DUPLIKAT DI SHEET', 'duplicate');
+                suaraErrorKeras();
+                triggerVisualFeedback('duplicate', 'scannerCard');
+                if (badgeEl) {
+                  badgeEl.className = 'tag-status tag-dup';
+                  badgeEl.textContent = 'DUPLIKAT SHEET';
+                }
+                if (cardEl) cardEl.classList.add('dup');
+                tampilkanStatus('duplicate', '⚠️ ' + hasil.message);
               }
             } else {
-              playBeep('error');
-              updateLogItemStatus(origItem.id, res.message || 'GAGAL', 'error');
+              if (badgeEl) {
+                badgeEl.className = 'tag-status tag-dup';
+                badgeEl.textContent = 'GAGAL';
+              }
             }
           });
+          updateSyncStatus(false, 'Semua Data Tersinkron');
+        } else {
+          batchToSend.forEach(item => item.isRetry = true);
+          updateSyncStatus(true, 'Antrean padat, mencoba ulang...');
         }
       } catch (err) {
-        // Jaringan putus / timeout: tandai isRetry = true dan simpan di localStorage
-        uploadQueue.forEach(item => {
-          if (sentIds.has(item.id)) item.isRetry = true;
-        });
-        saveQueueToLocalStorage();
-        document.getElementById('statusText').textContent = 'Sinyal terganggu, mengantre ulang...';
+        batchToSend.forEach(item => item.isRetry = true);
+        updateSyncStatus(true, 'Sinkronisasi ulang...');
       } finally {
         isSyncing = false;
         updateQueueUI();
       }
     }
 
-    // =========================================================================
-    // ARSIPKAN DATA (PASSWORD: 1110)
-    // =========================================================================
-    async function promptArchive() {
-      if (uploadQueue.length > 0 || isSyncing) {
-        alert('Tunggu hingga seluruh antrean pengiriman selesai (Antrean: 0) sebelum mengarsipkan!');
+    function updateQueueUI() {
+      document.getElementById('queueCount').textContent = 'Antrean: ' + uploadQueue.length;
+    }
+
+    function updateSyncStatus(isBusy, text) {
+      const dot = document.getElementById('syncDot');
+      dot.className = isBusy ? 'sync-dot busy' : 'sync-dot';
+      document.getElementById('syncText').textContent = text;
+    }
+
+    function tampilkanStatus(tipe, pesan) {
+      const box = document.getElementById('statusBox');
+      box.className = '';
+      void box.offsetWidth;
+      box.className = 'status-' + tipe;
+      box.textContent = pesan;
+    }
+
+    function tambahKeRiwayat(itemId, resi, kurir, waktu) {
+      totalScan++;
+      const counterEl = document.getElementById('scanCounter');
+      counterEl.textContent = totalScan + ' SCAN';
+
+      const list = document.getElementById('historyList');
+      if (totalScan === 1) list.innerHTML = '';
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.id = itemId;
+      item.innerHTML = `
+        <div>
+          <div class="history-resi">${resi}</div>
+          <div class="history-meta">KURIR: <b style="color:var(--orange-bright);">${kurir}</b> • ${waktu}</div>
+        </div>
+        <span class="tag-status tag-pending" id="status-${itemId}">MENGIRIM...</span>
+      `;
+      list.prepend(item);
+    }
+
+    // FITUR ARSIP BERPASSWORD 1110 (KLIK ROBOT)
+    function bukaModalArsip() {
+      initAudio();
+      pastikanVideoBackgroundBerputar();
+      const input = document.getElementById('archivePassInput');
+      input.value = '';
+      input.placeholder = '••••';
+      document.getElementById('archiveModal').classList.add('open');
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function tutupModalArsip() {
+      document.getElementById('archiveModal').classList.remove('open');
+    }
+
+    async function prosesArsipData() {
+      const input = document.getElementById('archivePassInput');
+      const pass = input.value.trim();
+
+      if (pass !== '1110') {
+        suaraErrorKeras();
+        input.value = '';
+        input.placeholder = 'SALAH!';
         return;
       }
-      const pwd = prompt('Masukkan Password Arsip untuk memindahkan semua data ke Resi History:');
-      if (!pwd) return;
+
+      tutupModalArsip();
+      updateSyncStatus(true, 'Mengarsipkan 32 sheet kurir...');
+      tampilkanStatus('duplicate', '⏳ Memindahkan data 32 sheet (A–Z) ke Resi History...');
 
       try {
-        document.getElementById('statusText').textContent = 'Mengarsipkan seluruh sheet kurir...';
-        const res = await fetch(WEB_APP_URL, {
+        const response = await fetch(WEB_APP_URL, {
           method: 'POST',
+          redirect: 'follow',
+          cache: 'no-store',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'archive',
-            password: pwd
-          })
+          body: JSON.stringify({ action: 'archive', password: pass })
         });
-        const data = await res.json();
-        if (data.status === 'success') {
-          alert('✅ ' + data.message);
-          // Reset penyimpanan lokal & counter sesi setelah arsip sukses
-          uploadQueue = [];
+        const res = await response.json();
+
+        if (res.status === 'success') {
+          suaraSuksesKeras();
           localCache.clear();
-          kurirCounts = {};
-          totalSessionScans = 0;
-          localStorage.removeItem(STORAGE_QUEUE_KEY);
-          localStorage.removeItem(STORAGE_COUNTS_KEY);
-          document.getElementById('logList').innerHTML = '';
-          document.getElementById('totalScanCounter').textContent = 'Total Sesi: 0 SCAN';
-          updateKurirCounterUI();
-          updateQueueUI();
+          totalScan = 0;
+          document.getElementById('scanCounter').textContent = '0 SCAN';
+          document.getElementById('historyList').innerHTML = '<div style="text-align:center; color:var(--text-sub); font-size:11px; padding:28px 10px; opacity:0.6;">NO DATA RECORDED</div>';
+          updateSyncStatus(false, 'Arsip Selesai');
+          tampilkanStatus('success', '✅ ' + res.message);
         } else {
-          alert('❌ ' + (data.message || 'Gagal mengarsipkan data.'));
+          suaraErrorKeras();
+          updateSyncStatus(false, 'Database Siap');
+          tampilkanStatus('error', '⚠️ ' + (res.message || 'Gagal mengarsipkan'));
         }
       } catch (err) {
-        alert('Terjadi kesalahan jaringan saat arsip: ' + err);
+        suaraErrorKeras();
+        updateSyncStatus(false, 'Database Siap');
+        tampilkanStatus('error', '❌ Gagal terhubung ke server saat mengarsipkan.');
       }
     }
 
-    // =========================================================================
-    // PEMBARUAN TAMPILAN UI LOG & INDIKATOR ANTREAN
-    // =========================================================================
-    function updateQueueUI() {
-      const dot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      const badgeBtn = document.getElementById('queueBadgeBtn');
-
-      badgeBtn.textContent = `Antrean: ${uploadQueue.length}`;
-
-      if (uploadQueue.length > 0 || isSyncing) {
-        dot.classList.add('syncing');
-        badgeBtn.classList.add('has-pending');
-        statusText.textContent = `Mengirim ${uploadQueue.length} resi ke server...`;
-      } else {
-        dot.classList.remove('syncing');
-        badgeBtn.classList.remove('has-pending');
-        statusText.textContent = 'Terhubung • Semua Terkirim';
-        document.getElementById('hardBlockWarning').style.display = 'none';
-      }
-    }
-
-    function renderLogItem(item, statusLabel, statusClass) {
-      const list = document.getElementById('logList');
-      if (document.getElementById('log_' + item.id)) return;
-
-      const div = document.createElement('div');
-      div.id = 'log_' + item.id;
-      div.className = 'log-item ' + statusClass;
-      div.innerHTML = `
-        <div class="log-info">
-          <span class="log-resi">${item.resi}</span>
-          <span class="log-meta">${item.kurir} • ${item.timestamp}</span>
-        </div>
-        <span class="log-status" id="status_${item.id}">${statusLabel}</span>
-      `;
-      list.prepend(div);
-    }
-
-    function updateLogItemStatus(itemId, newLabel, newClass) {
-      const row = document.getElementById('log_' + itemId);
-      const badge = document.getElementById('status_' + itemId);
-      if (row) {
-        row.className = 'log-item ' + newClass;
-      }
-      if (badge) {
-        badge.textContent = newLabel;
-      }
-    }
-
-    // =========================================================================
-    // EFEK SUARA BEEP (SUKSES & ERROR/DUPLIKAT)
-    // =========================================================================
-    function playBeep(type) {
+    // SISTEM AUDIO SUPER NYARING (MAX GAIN + COMPRESSOR)
+    function suaraSuksesKeras() {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        initAudio();
+        const now = audioCtx.currentTime;
 
-        if (type === 'success') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(1050, ctx.currentTime);
-          gain.gain.setValueAtTime(0.2, ctx.currentTime);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.09);
-        } else {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(280, ctx.currentTime);
-          gain.gain.setValueAtTime(0.3, ctx.currentTime);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.32);
-        }
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-10, now);
+        compressor.knee.setValueAtTime(0, now);
+        compressor.ratio.setValueAtTime(20, now);
+        compressor.attack.setValueAtTime(0, now);
+        compressor.release.setValueAtTime(0.1, now);
+        compressor.connect(audioCtx.destination);
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.connect(compressor);
+
+        const osc1 = audioCtx.createOscillator();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(1500, now);
+        osc1.frequency.setValueAtTime(2400, now + 0.08);
+        osc1.connect(masterGain);
+
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(3000, now);
+        osc2.frequency.setValueAtTime(3600, now + 0.08);
+        osc2.connect(masterGain);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.18);
+        osc2.stop(now + 0.18);
       } catch (e) {}
     }
+
+    function suaraErrorKeras() {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.connect(audioCtx.destination);
+
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.setValueAtTime(220, now + 0.18);
+
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterGain.gain.setValueAtTime(0.0, now + 0.14);
+        masterGain.gain.setValueAtTime(1.0, now + 0.18);
+
+        osc.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } catch (e) {}
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+      if (uploadQueue.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
   </script>
 </body>
 </html>
