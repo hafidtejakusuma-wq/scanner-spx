@@ -64,26 +64,32 @@
       gap: 7px;
     }
     
-    /* HEADER: Robot 120x100px menempel kiri huruf S Logo SPX 200x70px, kepala robot tampak 6px dari tepi atas */
+    /* HEADER:
+       - Kepala visual robot berjarak 2px dari tepi atas halaman (kompensasi area transparan atas GIF)
+       - Bagian bawah kaki robot dan bagian bawah logo SPX sejajar (align-items: flex-end)
+       - Hanya ujung tangan kanan robot menyentuh tepi luar huruf S (margin-right: -8px) */
     .header { 
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      height: 98px;
-      margin-top: 1px;
+      height: 50px;
+      margin-top: 0;
+      padding-bottom: 2px;
       flex-shrink: 0;
       position: relative;
+      overflow: visible;
     }
 
     .robot-mascot {
-      width: 120px;
-      height: 100px;
+      width: 60px;
+      height: 50px;
       object-fit: contain;
       cursor: pointer;
-      margin-right: -34px;
+      margin-top: -2px; /* Mengompensasi ruang transparan atas agar kepala robot tampak 2px dari tepi atas */
+      margin-right: -8px; /* Hanya ujung tangan kanan menyentuh tepi luar huruf S */
       z-index: 3;
       mix-blend-mode: lighten;
-      filter: drop-shadow(0 6px 14px rgba(255, 85, 0, 0.55));
+      filter: drop-shadow(0 4px 10px rgba(255, 85, 0, 0.55));
       animation: robotFloat 3.2s ease-in-out infinite;
       transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
@@ -96,26 +102,28 @@
 
     @keyframes robotFloat {
       0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50%      { transform: translateY(-4px) rotate(2deg); }
+      50%      { transform: translateY(-2px) rotate(1.5deg); }
     }
     @keyframes robotCheer {
       0%   { transform: scale(1) translateY(0); }
-      35%  { transform: scale(1.14) translateY(-6px) rotate(6deg); }
-      70%  { transform: scale(0.96) translateY(2px) rotate(-3deg); }
+      35%  { transform: scale(1.14) translateY(-4px) rotate(6deg); }
+      70%  { transform: scale(0.96) translateY(1px) rotate(-3deg); }
       100% { transform: scale(1) translateY(0); }
     }
 
     .center-logo {
-      width: 200px;
-      height: 70px;
+      width: 100px;
+      height: 40px;
       object-fit: contain;
+      margin-bottom: -2px; /* Menyejajarkan garis bawah logo SPX dengan telapak kaki robot */
       z-index: 2;
-      filter: drop-shadow(0 0 14px rgba(255, 85, 0, 0.7));
+      filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.7));
     }
 
     @media (max-width: 350px) {
-      .robot-mascot { width: 108px; height: 90px; margin-right: -28px; }
-      .center-logo { width: 180px; height: 63px; }
+      .header { height: 45px; }
+      .robot-mascot { width: 54px; height: 45px; margin-right: -7px; }
+      .center-logo { width: 90px; height: 36px; }
     }
 
     /* Kartu Glassmorphism */
@@ -201,7 +209,7 @@
     #reader-wrapper { 
       position: relative; width: 100%; border-radius: 12px; overflow: hidden; 
       background: #000; 
-      height: clamp(145px, 21dvh, 210px);
+      height: clamp(160px, 23dvh, 225px);
       border: 1px solid var(--border-color);
       transition: all 0.25s ease;
     }
@@ -276,7 +284,7 @@
     /* LOG TRANSMISI */
     .history-card {
       flex: 1;
-      min-height: 130px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -334,7 +342,7 @@
   <div id="flashOverlay" class="flash-overlay"></div>
 
   <div class="container">
-    <!-- HEADER: Menggunakan file robot-header.gif dan logo-header.png sesuai isi repositori GitHub -->
+    <!-- HEADER: Robot 60x50px (kepala 2px dari atas) sejajar bawah dengan Logo SPX 100x40px -->
     <div class="header">
       <img src="robot-header.gif" alt="SPX Robot Arsip" id="robotMascot" class="robot-mascot" onclick="bukaModalArsip()" title="Klik untuk Arsip & Reset 32 Sheet Kurir">
       <img src="logo-header.png" alt="SPX Express" class="center-logo">
