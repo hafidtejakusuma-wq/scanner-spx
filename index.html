@@ -239,6 +239,27 @@
     }
 
     label { display: block; font-size: 10px; font-weight: 700; color: var(--text-sub); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.9px; }
+
+    /* Baris Label + Counter Real-Time per Kurir Terpilih */
+    .kurir-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .kurir-top-row label {
+      margin-bottom: 0;
+    }
+    .kurir-scan-pill {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--orange-bright);
+      background: var(--orange-dim);
+      border: 1px solid rgba(255, 107, 0, 0.55);
+      padding: 1px 8px;
+      border-radius: 99px;
+      letter-spacing: 0.4px;
+    }
     
     select, input[type="text"] {
       width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border-color);
@@ -274,7 +295,7 @@
       100% { background-position: -200% 0; }
     }
 
-    /* Bar Status Antrean Sinkronisasi */
+    /* Bar Status Antrean Sinkronisasi + Tombol Force Sync */
     .sync-bar {
       display: flex; justify-content: space-between; align-items: center;
       background: rgba(0, 0, 0, 0.82); border: 1px solid var(--border-color); border-radius: 10px;
@@ -285,6 +306,24 @@
     .sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: #10b981; }
     .sync-dot.busy { background: #ff6b00; animation: pulse 0.8s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    .queue-force-btn {
+      color: var(--orange-bright);
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .queue-force-btn.pending {
+      background: rgba(255, 85, 0, 0.2);
+      border-color: var(--orange-neon);
+      animation: pulse 1.1s infinite;
+    }
+    .queue-force-btn:active {
+      transform: scale(0.94);
+    }
 
     #statusBox {
       display: none; padding: 7px 10px; border-radius: 10px;
@@ -465,9 +504,13 @@
       <button id="btnSenter" class="icon-corner-btn btn-torch-off" onclick="toggleSenter()" disabled title="Nyalakan / Matikan Senter">🔦</button>
     </div>
 
-    <!-- Kartu Pemilihan Kurir -->
+    <!-- Kartu Pemilihan Kurir + Counter Real-Time per Kurir -->
     <div class="card" id="kurirCard">
       <div class="card-inner">
+        <div class="kurir-top-row">
+          <label for="kurirSelect">Kurir Bertugas</label>
+          <span class="kurir-scan-pill" id="kurirCounterPill">KURIR: 0 RESI</span>
+        </div>
         <div id="kurirSkeleton" class="skeleton-box">MENGHUBUNGKAN DATABASE KURIR...</div>
         <select id="kurirSelect" class="select-empty" style="display:none;" onchange="onKurirChange()">
           <option value="">-- PILIH NAMA KURIR --</option>
@@ -475,10 +518,10 @@
       </div>
     </div>
 
-    <!-- Indikator Antrean Real-Time -->
+    <!-- Indikator Antrean Real-Time (Ketuk Antrean untuk Force Sync) -->
     <div class="sync-bar">
       <div><span class="sync-dot" id="syncDot"></span><span id="syncText">Database Siap</span></div>
-      <div style="color:var(--orange-bright); font-weight:700;" id="queueCount">Antrean: 0</div>
+      <div class="queue-force-btn" id="queueCount" onclick="paksaKirimSekarang()" title="Ketuk untuk kirim ulang sekarang">Antrean: 0</div>
     </div>
 
     <div id="statusBox"></div>
@@ -500,7 +543,7 @@
       <div class="card-inner">
         <label for="manualInput">Manual Override (SPXID06 / ID)</label>
         <div class="manual-row">
-          <input type="text" id="manualInput" placeholder="Contoh: SPXID06... atau ID...">
+          <input type="text" id="manualInput" placeholder="Contoh: SPXID06... atau ID..." onkeydown="if(event.key==='Enter') kirimManual()">
           <button class="btn-manual" onclick="kirimManual()">TRANSMIT</button>
         </div>
       </div>
@@ -537,6 +580,8 @@
 
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyAncrO8ZkHSQxVFuLDj1vF1UvMh7Fpb-b-TuUgrOhXsPLQqmJokNcd90S5YcEGxIj4Lw/exec';
+    const STORAGE_QUEUE_KEY = 'spx_pending_queue_backup_v1';
+    const STORAGE_COUNTS_KEY = 'spx_kurir_counts_backup_v1';
 
     const WHITELIST_KURIR = [
       'INDRA AMTA ZIANSYAH', 'MATTASLIM', 'MOH ISMAIL ZAKARIYA', 'ZAKARIYA',
@@ -553,14 +598,139 @@
     let html5QrCode = null;
     let isScanning = false;
     let isTorchOn = false;
+    let wakeLock = null;
     let lastScannedCode = '';
     let lastScannedTime = 0;
     let totalScan = 0;
+    let kurirCounts = {};
     let audioCtx = null;
 
     const localCache = new Set();
     let uploadQueue = [];
     let isSyncing = false;
+
+    // =========================================================================
+    // PENYIMPANAN PERMANEN ANTI-HILANG DATA (localStorage)
+    // =========================================================================
+    function simpanCadanganLokal() {
+      try {
+        localStorage.setItem(STORAGE_QUEUE_KEY, JSON.stringify(uploadQueue));
+        localStorage.setItem(STORAGE_COUNTS_KEY, JSON.stringify({
+          totalScan: totalScan,
+          kurirCounts: kurirCounts
+        }));
+      } catch (e) {}
+    }
+
+    function pulihkanCadanganLokal() {
+      try {
+        const savedCounts = localStorage.getItem(STORAGE_COUNTS_KEY);
+        if (savedCounts) {
+          const parsedCounts = JSON.parse(savedCounts);
+          totalScan = parsedCounts.totalScan || 0;
+          kurirCounts = parsedCounts.kurirCounts || {};
+          document.getElementById('scanCounter').textContent = totalScan + ' SCAN';
+        }
+
+        const savedQueue = localStorage.getItem(STORAGE_QUEUE_KEY);
+        if (savedQueue) {
+          const parsedQueue = JSON.parse(savedQueue);
+          if (Array.isArray(parsedQueue) && parsedQueue.length > 0) {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            parsedQueue.forEach(item => {
+              item.isRetry = true;
+              uploadQueue.push(item);
+              localCache.add(item.kurir + '::' + item.resi);
+
+              const jamSingkat = (item.timestamp || '').split(' ')[1] || item.timestamp;
+              const div = document.createElement('div');
+              div.className = 'history-item';
+              div.id = item.id;
+              div.innerHTML = `
+                <div>
+                  <div class="history-resi">${item.resi}</div>
+                  <div class="history-meta">KURIR: <b style="color:var(--orange-bright);">${item.kurir}</b> • ${jamSingkat}</div>
+                </div>
+                <span class="tag-status tag-pending" id="status-${item.id}">MENGIRIM...</span>
+              `;
+              list.prepend(div);
+            });
+            updateQueueUI();
+          }
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // HARD BLOCK NAVIGASI (BACK / REFRESH / CLOSE) & KIRIM DARURAT SAAT HOME
+    // =========================================================================
+    function aktifkanHardBlockNavigasi() {
+      history.pushState({ spxLock: true }, '', location.href);
+
+      // 1. Cegat tombol Back HP saat masih ada status MENGIRIM...
+      window.addEventListener('popstate', function () {
+        if (uploadQueue.length > 0 || isSyncing) {
+          history.pushState({ spxLock: true }, '', location.href);
+          suaraErrorKeras();
+          if (navigator.vibrate) navigator.vibrate([150, 70, 150]);
+          triggerVisualFeedback('error', 'historyCard');
+          tampilkanStatus('error', '⛔ JANGAN KELUAR! Masih ada ' + uploadQueue.length + ' resi berstatus MENGIRIM...');
+          prosesAntreanBatch(false);
+        }
+      });
+
+      // 2. Cegat tutup tab / refresh browser saat masih ada antrean
+      window.addEventListener('beforeunload', function (e) {
+        if (uploadQueue.length > 0 || isSyncing) {
+          simpanCadanganLokal();
+          e.preventDefault();
+          e.returnValue = 'Masih ada resi berstatus MENGIRIM!';
+          return e.returnValue;
+        }
+      });
+
+      // 3. Kirim darurat seketika (keepalive) saat kurir menekan tombol Home / pindah aplikasi
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          if (uploadQueue.length > 0) {
+            simpanCadanganLokal();
+            prosesAntreanBatch(true);
+          }
+        } else if (document.visibilityState === 'visible') {
+          if (isScanning) mintaWakeLock();
+          if (uploadQueue.length > 0) prosesAntreanBatch(false);
+        }
+      });
+
+      window.addEventListener('pagehide', function () {
+        if (uploadQueue.length > 0) {
+          simpanCadanganLokal();
+          prosesAntreanBatch(true);
+        }
+      });
+    }
+
+    // =========================================================================
+    // SCREEN WAKE LOCK (LAYAR TETAP MENYALA SAAT KAMERA AKTIF)
+    // =========================================================================
+    async function mintaWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+      } catch (e) {}
+    }
+
+    async function lepasWakeLock() {
+      try {
+        if (wakeLock) {
+          await wakeLock.release();
+          wakeLock = null;
+        }
+      } catch (e) {}
+    }
 
     function pastikanVideoBackgroundBerputar() {
       const bgVid = document.getElementById('bgHudVideo');
@@ -591,7 +761,7 @@
       const detik = pad(dateObj.getSeconds());
       return {
         jamSingkat: `${jam}:${menit}:${detik}`,
-        timestampLengkap: `${tahun}-${bulan}-${tanggal} ${jam}:${menit}:${detik}`
+        timestampLengkap: `${tanggal}/${bulan}/${tahun} ${jam}:${menit}:${detik}`
       };
     }
 
@@ -619,6 +789,17 @@
       }
     }
 
+    function updateKurirCounterPill() {
+      const kurir = document.getElementById('kurirSelect').value;
+      const pill = document.getElementById('kurirCounterPill');
+      if (!kurir) {
+        pill.textContent = 'KURIR: 0 RESI';
+        return;
+      }
+      const jml = kurirCounts[kurir] || 0;
+      pill.textContent = `${kurir}: ${jml} RESI`;
+    }
+
     function onKurirChange() {
       pastikanVideoBackgroundBerputar();
       const select = document.getElementById('kurirSelect');
@@ -628,10 +809,13 @@
       } else {
         select.classList.add('select-empty');
       }
+      updateKurirCounterPill();
     }
 
     window.onload = async function() {
       pastikanVideoBackgroundBerputar();
+      pulihkanCadanganLokal();
+      aktifkanHardBlockNavigasi();
 
       html5QrCode = new Html5Qrcode("reader", {
         experimentalFeatures: {
@@ -675,9 +859,13 @@
       } finally {
         skeleton.style.display = 'none';
         select.style.display = 'block';
+        updateKurirCounterPill();
       }
 
-      setInterval(prosesAntreanBatch, 2500);
+      setInterval(() => prosesAntreanBatch(false), 2500);
+      if (uploadQueue.length > 0) {
+        prosesAntreanBatch(false);
+      }
     };
 
     async function toggleKamera() {
@@ -715,6 +903,7 @@
             () => {}
           );
           isScanning = true;
+          await mintaWakeLock();
           wrapper.classList.add('cam-active');
           btnCam.textContent = '⏹';
           btnCam.className = 'icon-corner-btn btn-cam-stop';
@@ -727,6 +916,7 @@
         if (isTorchOn) await setTorchState(false);
         await html5QrCode.stop();
         isScanning = false;
+        await lepasWakeLock();
         wrapper.classList.remove('cam-active');
         btnCam.textContent = '📷';
         btnCam.className = 'icon-corner-btn btn-cam-start';
@@ -822,13 +1012,28 @@
         isRetry: false
       });
 
+      kurirCounts[kurir] = (kurirCounts[kurir] || 0) + 1;
+      updateKurirCounterPill();
+
       updateQueueUI();
       tampilkanStatus('success', '⚡ MASUK ANTREAN: ' + resiBersih);
       tambahKeRiwayat(itemId, resiBersih, kurir, waktuScan.jamSingkat);
+      simpanCadanganLokal();
     }
 
-    async function prosesAntreanBatch() {
-      if (isSyncing || uploadQueue.length === 0) return;
+    function paksaKirimSekarang() {
+      initAudio();
+      if (uploadQueue.length === 0) {
+        tampilkanStatus('success', '✅ Semua data sudah terkirim (Antrean: 0).');
+        return;
+      }
+      tampilkanStatus('duplicate', '⚡ Memaksa pengiriman ' + uploadQueue.length + ' antrean...');
+      prosesAntreanBatch(false);
+    }
+
+    async function prosesAntreanBatch(isEmergencyKeepalive = false) {
+      if (uploadQueue.length === 0) return;
+      if (isSyncing && !isEmergencyKeepalive) return;
 
       isSyncing = true;
       updateSyncStatus(true, 'Menyimpan ' + uploadQueue.length + ' data...');
@@ -838,6 +1043,7 @@
       try {
         const response = await fetch(WEB_APP_URL, {
           method: 'POST',
+          keepalive: isEmergencyKeepalive,
           redirect: 'follow',
           cache: 'no-store',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -847,6 +1053,7 @@
 
         if (res.status === 'success' && Array.isArray(res.results)) {
           uploadQueue.splice(0, batchToSend.length);
+          simpanCadanganLokal();
 
           res.results.forEach((hasil, idx) => {
             const origItem = batchToSend[idx];
@@ -887,10 +1094,12 @@
           updateSyncStatus(false, 'Semua Data Tersinkron');
         } else {
           batchToSend.forEach(item => item.isRetry = true);
+          simpanCadanganLokal();
           updateSyncStatus(true, 'Antrean padat, mencoba ulang...');
         }
       } catch (err) {
         batchToSend.forEach(item => item.isRetry = true);
+        simpanCadanganLokal();
         updateSyncStatus(true, 'Sinkronisasi ulang...');
       } finally {
         isSyncing = false;
@@ -899,7 +1108,13 @@
     }
 
     function updateQueueUI() {
-      document.getElementById('queueCount').textContent = 'Antrean: ' + uploadQueue.length;
+      const qEl = document.getElementById('queueCount');
+      qEl.textContent = 'Antrean: ' + uploadQueue.length;
+      if (uploadQueue.length > 0) {
+        qEl.classList.add('pending');
+      } else {
+        qEl.classList.remove('pending');
+      }
     }
 
     function updateSyncStatus(isBusy, text) {
@@ -941,6 +1156,11 @@
     function bukaModalArsip() {
       initAudio();
       pastikanVideoBackgroundBerputar();
+      if (uploadQueue.length > 0 || isSyncing) {
+        suaraErrorKeras();
+        tampilkanStatus('error', '⚠️ Tunggu hingga Antrean: 0 sebelum mengarsipkan!');
+        return;
+      }
       const input = document.getElementById('archivePassInput');
       input.value = '';
       input.placeholder = '••••';
@@ -980,7 +1200,13 @@
         if (res.status === 'success') {
           suaraSuksesKeras();
           localCache.clear();
+          uploadQueue = [];
           totalScan = 0;
+          kurirCounts = {};
+          localStorage.removeItem(STORAGE_QUEUE_KEY);
+          localStorage.removeItem(STORAGE_COUNTS_KEY);
+          updateKurirCounterPill();
+          updateQueueUI();
           document.getElementById('scanCounter').textContent = '0 SCAN';
           document.getElementById('historyList').innerHTML = '<div style="text-align:center; color:var(--text-sub); font-size:11px; padding:28px 10px; opacity:0.6;">NO DATA RECORDED</div>';
           updateSyncStatus(false, 'Arsip Selesai');
@@ -1057,13 +1283,6 @@
         osc.stop(now + 0.36);
       } catch (e) {}
     }
-
-    window.addEventListener('beforeunload', function (e) {
-      if (uploadQueue.length > 0) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    });
   </script>
 </body>
 </html>
