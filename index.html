@@ -31,7 +31,6 @@
       color: var(--text-main);
     }
 
-    /* Layout 1 layar penuh (100dvh) */
     .container {
       max-width: 480px;
       height: 100dvh;
@@ -44,13 +43,19 @@
       gap: 7px;
     }
 
-    /* Header baris atas */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       height: 54px;
       padding-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .header-left-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
       flex-shrink: 0;
     }
 
@@ -77,7 +82,6 @@
       margin-bottom: -2px;
     }
 
-    /* Tombol ikon pojok kiri & kanan atas */
     .icon-corner-btn {
       width: 42px;
       height: 42px;
@@ -92,6 +96,23 @@
     }
     .icon-corner-btn:active:not(:disabled) { transform: scale(0.94); }
     .icon-corner-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+    .fps-select-btn {
+      width: 42px;
+      height: 42px;
+      padding: 0 2px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      text-align-last: center;
+      background: rgba(18, 11, 7, 0.95);
+      color: var(--orange-bright);
+      border: 1.5px solid var(--border-color);
+      cursor: pointer;
+      flex-shrink: 0;
+      outline: none;
+    }
 
     .btn-cam-start {
       background: linear-gradient(135deg, #ff7b00, #ff3d00);
@@ -119,10 +140,10 @@
       .brand-center { height: 45px; }
       .robot-mascot { width: 54px; height: 45px; margin-right: -1px; }
       .center-logo { width: 90px; height: 36px; }
-      .icon-corner-btn { width: 38px; height: 38px; font-size: 17px; }
+      .icon-corner-btn, .fps-select-btn { width: 38px; height: 38px; font-size: 17px; }
+      .fps-select-btn { font-size: 10px; }
     }
 
-    /* Kartu ringan tanpa blur atau animasi berputar berat */
     .card {
       position: relative;
       border-radius: 14px;
@@ -209,7 +230,6 @@
     .status-duplicate { display: block !important; background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fbbf24; }
     .status-error { display: block !important; background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #f87171; }
 
-    /* Kartu kamera */
     .scanner-card {
       flex: 1;
       min-height: 220px;
@@ -258,7 +278,6 @@
     .card.feedback-success { border-color: var(--green-neon); }
     .card.feedback-error { border-color: var(--red-neon); }
 
-    /* Log transmisi */
     .history-card {
       flex-shrink: 0;
       display: flex;
@@ -292,7 +311,6 @@
     .tag-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
     .tag-dup { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
-    /* Modal arsip berpassword 1110 */
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(0, 0, 0, 0.88);
       z-index: 999;
@@ -322,7 +340,16 @@
 <body>
   <div class="container">
     <div class="header">
-      <button id="btnKamera" class="icon-corner-btn btn-cam-start" onclick="toggleKamera()" title="Aktifkan / Matikan Kamera">📷</button>
+      <div class="header-left-group">
+        <button id="btnKamera" class="icon-corner-btn btn-cam-start" onclick="toggleKamera()" title="Aktifkan / Matikan Kamera">📷</button>
+        <select id="fpsSelect" class="fps-select-btn" onchange="onFpsChange()" title="Pilih FPS Kamera">
+          <option value="2">2F</option>
+          <option value="5">5F</option>
+          <option value="10" selected>10F</option>
+          <option value="15">15F</option>
+          <option value="20">20F</option>
+        </select>
+      </div>
 
       <div class="brand-center">
         <img src="robot-header.gif" alt="SPX Robot Arsip" id="robotMascot" class="robot-mascot" onclick="bukaModalArsip()" title="Klik untuk Arsip & Reset 32 Sheet Kurir">
@@ -418,6 +445,7 @@
     let html5QrCode = null;
     let isScanning = false;
     let isTorchOn = false;
+    let selectedFps = 10;
     let wakeLock = null;
     let lastScannedCode = '';
     let lastScannedTime = 0;
@@ -698,6 +726,25 @@
       });
     }
 
+    async function onFpsChange() {
+      const el = document.getElementById('fpsSelect');
+      const nilaiBaru = Number(el.value);
+      if (![2, 5, 10, 15, 20].includes(nilaiBaru)) return;
+      selectedFps = nilaiBaru;
+
+      if (isScanning) {
+        if (isTorchOn) await setTorchState(false);
+        await html5QrCode.stop();
+        isScanning = false;
+        lepasWakeLock();
+        document.getElementById('reader-wrapper').classList.remove('cam-active');
+        document.getElementById('btnKamera').textContent = '📷';
+        document.getElementById('btnKamera').className = 'icon-corner-btn btn-cam-start';
+        document.getElementById('btnSenter').disabled = true;
+        await toggleKamera();
+      }
+    }
+
     async function toggleKamera() {
       initAudio();
       const kurir = document.getElementById('kurirSelect').value;
@@ -720,7 +767,7 @@
           await html5QrCode.start(
             { facingMode: "environment" },
             {
-              fps: 10,
+              fps: selectedFps,
               aspectRatio: 1.333334,
               qrbox: function(viewfinderWidth, viewfinderHeight) {
                 return {
